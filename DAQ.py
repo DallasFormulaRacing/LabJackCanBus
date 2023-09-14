@@ -5,7 +5,7 @@ from DAQState import DAQState
 from messageIDs import canMessageSort
 import csv
 import threading
-from labjack import ljm
+from labjack import ljm, LJMError
 
 global ECUData
 
@@ -28,13 +28,15 @@ class DAQObject:
         self.writeData = [None]
         self.handle = ljm.openS("T7")
         info = ljm.getHandleInfo(self.handle)
+        self.print_labjack_info(info)
 
+    def print_labjack_info(self, info):
         print(f"""\nOpened a LabJack with Device type: {info[0]},\n
             Connection type: {info[1]},\n Serial number: {info[2]},\n
             IP address: {ljm.numberToIP(info[3])},\n Port: {info[4]},\n
             Max bytes per MB: {info[5]}\n""")
 
-    def setSMState(self, nextState):
+    def setSMState(self, nextState: DAQState):
         self.currentState = nextState
 
     def readLJ(self):
@@ -64,7 +66,12 @@ class DAQObject:
                     self.setSMState(DAQState.COLLECTING)
 
                 if self.currentState == DAQState.COLLECTING:
-                    print(self.readLJ())
+
+                    try:
+                        print(self.readLJ())
+                    except LJMError:
+                        print("LabJack Error", LJMError)
+
                     # recordedTime = time.time()
                     self.writeData.append(time.time())
                     self.writeData.extend(self.ECUData)
