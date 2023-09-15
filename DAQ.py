@@ -6,57 +6,68 @@ from messageIDs import canMessageSort
 import csv
 import threading
 from labjack import ljm
-global ECUData
-can.rc['interface'] = 'socketcan'
 
+global ECUData
+
+can.rc['interface'] = 'socketcan'
 os.system('sudo ip link set can0 type can bitrate 250000')
 os.system('sudo ifconfig can0 up')
-
 can0 = can.interface.Bus(channel="can0", interface="socketcan")
 
 
 class DAQObject:
 
-    def __init__(self):
+    def __init__(self, output_file: str):
 
         self.currentState = DAQState.INIT
-        self.csvFilePath = "data.csv"
-        self.file = open(self.csvFilePath, mode='w')
+        self.output_file = output_file
+        self.file = open(self.output_file, mode='w')
         self.writer = csv.writer(self.file)
-
         self.ECUData = [None] * 16
         self.LJData = []
         self.writeData = [None]
-
         self.handle = ljm.openS("T7")
         info = ljm.getHandleInfo(self.handle)
-        print("\nOpened a LabJack with Device type: %i, Connection type: %i,\n"
-              "Serial number: %i, IP address: %s, Port: %i,\nMax bytes per MB: %i" %
-              (info[0], info[1], info[2], ljm.numberToIP(info[3]), info[4], info[5]))
+        self.print_labjack_info(info)
 
-    def setSMState(self, nextState):
-        lastState = self.currentState
+        self.canbus = threading.Thread(target=self.readCAN)
+        self.run = threading.Thread(target=self.DAQRun)
+        self.can_read_lock = threading.Lock()
+        self.daq_run_lock = threading.Lock()
+        self.daq_run_lock.acquire()
+
+    def print_labjack_info(self, info):
+        print(f"""\nOpened a LabJack with Device type: {info[0]},\n
+            Connection type: {info[1]},\n Serial number: {info[2]},\n
+            IP address: {ljm.numberToIP(info[3])},\n Port: {info[4]},\n
+            Max bytes per MB: {info[5]}\n""")
+
+    def setSMState(self, nextState: DAQState):
         self.currentState = nextState
 
     def readLJ(self):
         return ljm.eReadName(self.handle, "AIN0")
 
+    def start_threads(self):
+        self.canbus.start()
+        self.run.start()
+
     def readCAN(self):
 
         while True:
-
             with can.Bus() as bus:
+                self.daq_run_lock.acquire()
                 msg = bus.recv()
-
                 index = canMessageSort.get(msg.arbitration_id)
                 self.ECUData[index] = msg.data
+                self.daq_run_lock.release()
 
     def DAQRun(self):
 
         nextTime = time.time()
 
         while True:
-
+            self.can_read_lock.acquire()
             if time.time() < nextTime:
                 time.sleep(0)
 
@@ -64,27 +75,35 @@ class DAQObject:
                 nextTime = time.time()
 
                 if self.currentState == DAQState.INIT:
-                    print("xd")
                     self.setSMState(DAQState.COLLECTING)
 
                 if self.currentState == DAQState.COLLECTING:
-                    print(self.readLJ())
-                    recordedTime = time.time()
+
+                    try:
+                        print(self.readLJ())
+                    except ljm.LJMError:
+                        print("LabJack Error", ljm.LJMError)
+
+                    # recordedTime = time.time()
                     self.writeData.append(time.time())
                     self.writeData.extend(self.ECUData)
                     self.writer.writerow(self.writeData)
                     self.writeData.clear()
 
+            self.can_read_lock.release()
+
+        self.canbus.join()
+        self.run.join()
+
     def __del__(self):
+
         os.system('sudo ifconfig can0 down')
 
 
 if __name__ == "__main__":
-    DAQ = DAQObject()
-    canbus = threading.Thread(target=DAQ.readCAN)
-    run = threading.Thread(target=DAQ.DAQRun)
 
-    canbus.start()
-    run.start()
+    DAQ = DAQObject("output.csv")
+    DAQ.start_threads()
+
     print("test")
     time.sleep(10)
