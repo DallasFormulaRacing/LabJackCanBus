@@ -5,7 +5,7 @@ from DAQState import DAQState
 from messageIDs import canMessageSort
 import csv
 import threading
-from labjack import ljm, LJMError
+from labjack import ljm
 
 global ECUData
 
@@ -69,8 +69,8 @@ class DAQObject:
 
                     try:
                         print(self.readLJ())
-                    except LJMError:
-                        print("LabJack Error", LJMError)
+                    except ljm.LJMError:
+                        print("LabJack Error", ljm.LJMError)
 
                     # recordedTime = time.time()
                     self.writeData.append(time.time())
