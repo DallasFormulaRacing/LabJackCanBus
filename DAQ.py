@@ -36,13 +36,13 @@ class DAQObject:
         self.daq_run_lock = threading.Lock()
         self.daq_run_lock.acquire()
 
-    def print_labjack_info(self, info):
+    def print_labjack_info(self, info) -> None:
         print(f"""\nOpened a LabJack with Device type: {info[0]},\n
             Connection type: {info[1]},\n Serial number: {info[2]},\n
             IP address: {ljm.numberToIP(info[3])},\n Port: {info[4]},\n
             Max bytes per MB: {info[5]}\n""")
 
-    def setSMState(self, nextState: DAQState):
+    def setSMState(self, nextState: DAQState) -> None:
         self.currentState = nextState
 
     def readLJ(self):
@@ -62,7 +62,13 @@ class DAQObject:
                 self.ECUData[index] = msg.data
                 self.daq_run_lock.release()
 
-    def DAQRun(self):
+    def resolveError(self) -> bool:
+        try:
+            return True
+        except ljm.LJMError:
+            return False
+
+    def DAQRun(self) -> None:
 
         nextTime = time.time()
 
@@ -82,6 +88,11 @@ class DAQObject:
                     try:
                         print(self.readLJ())
                     except ljm.LJMError:
+                        self.currentState == DAQState.ERROR
+
+                        if self.resolveError():
+                            break
+                        
                         print("LabJack Error", ljm.LJMError)
 
                     # recordedTime = time.time()
@@ -92,9 +103,6 @@ class DAQObject:
 
             self.can_read_lock.release()
 
-        self.canbus.join()
-        self.run.join()
-
     def __del__(self):
 
         os.system('sudo ifconfig can0 down')
@@ -102,7 +110,7 @@ class DAQObject:
 
 if __name__ == "__main__":
 
-    DAQ = DAQObject("output.csv")
+    DAQ = DAQObject("data/output.csv")
     DAQ.start_threads()
 
     print("test")

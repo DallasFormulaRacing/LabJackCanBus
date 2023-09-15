@@ -5,3 +5,4 @@ class DAQState(Enum):
     INIT = 'INIT'
     SAVING = 'SAVING'
     COLLECTING = 'COLLECTING'
+    ERROR = "ERROR"
