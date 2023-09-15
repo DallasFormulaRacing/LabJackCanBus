@@ -30,6 +30,12 @@ class DAQObject:
         info = ljm.getHandleInfo(self.handle)
         self.print_labjack_info(info)
 
+        self.canbus = threading.Thread(target=self.readCAN)
+        self.run = threading.Thread(target=self.DAQRun)
+        self.can_read_lock = threading.Lock()
+        self.daq_run_lock = threading.Lock()
+        self.daq_run_lock.acquire()
+
     def print_labjack_info(self, info):
         print(f"""\nOpened a LabJack with Device type: {info[0]},\n
             Connection type: {info[1]},\n Serial number: {info[2]},\n
@@ -42,20 +48,26 @@ class DAQObject:
     def readLJ(self):
         return ljm.eReadName(self.handle, "AIN0")
 
+    def start_threads(self):
+        self.canbus.start()
+        self.run.start()
+
     def readCAN(self):
 
         while True:
             with can.Bus() as bus:
+                self.daq_run_lock.acquire()
                 msg = bus.recv()
                 index = canMessageSort.get(msg.arbitration_id)
                 self.ECUData[index] = msg.data
+                self.daq_run_lock.release()
 
     def DAQRun(self):
 
         nextTime = time.time()
 
         while True:
-
+            self.can_read_lock.acquire()
             if time.time() < nextTime:
                 time.sleep(0)
 
@@ -78,6 +90,11 @@ class DAQObject:
                     self.writer.writerow(self.writeData)
                     self.writeData.clear()
 
+            self.can_read_lock.release()
+
+        self.canbus.join()
+        self.run.join()
+
     def __del__(self):
 
         os.system('sudo ifconfig can0 down')
@@ -86,11 +103,7 @@ class DAQObject:
 if __name__ == "__main__":
 
     DAQ = DAQObject("output.csv")
-    canbus = threading.Thread(target=DAQ.readCAN)
-    run = threading.Thread(target=DAQ.DAQRun)
-
-    canbus.start()
-    run.start()
+    DAQ.start_threads()
 
     print("test")
     time.sleep(10)
