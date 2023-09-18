@@ -2,12 +2,12 @@ import os
 import can
 import time
 from DAQState import DAQState
-from messageIDs import canMessageSort
+from messageIDs import canMessageSort, can_messages
 import csv
 import threading
 from labjack import ljm
+import pandas as pd
 
-global ECUData
 
 can.rc['interface'] = 'socketcan'
 os.system('sudo ip link set can0 type can bitrate 250000')
@@ -23,6 +23,8 @@ class DAQObject:
         self.output_file = output_file
         self.file = open(self.output_file, mode='w')
         self.writer = csv.writer(self.file)
+        self.ecu_columns = can_messages
+        self.ecu_df = pd.Dataframe(self.ecu_columns)
         self.ECUData = [None] * 16
         self.LJData = []
         self.writeData = [None]
@@ -56,10 +58,12 @@ class DAQObject:
 
         while True:
             with can.Bus() as bus:
+                index = 0
                 self.daq_run_lock.acquire()
                 msg = bus.recv()
-                index = canMessageSort.get(msg.arbitration_id)
-                self.ECUData[index] = msg.data
+
+                self.ecu_df.loc[index, str(msg.arbitration_id)] = msg.data
+                index += 1
                 self.daq_run_lock.release()
 
     def resolveError(self) -> bool:
@@ -92,7 +96,7 @@ class DAQObject:
 
                         if self.resolveError():
                             break
-                        
+
                         print("LabJack Error", ljm.LJMError)
 
                     # recordedTime = time.time()
@@ -111,6 +115,7 @@ class DAQObject:
 if __name__ == "__main__":
 
     DAQ = DAQObject("data/output.csv")
+    print(DAQ.ecu_df)
     DAQ.start_threads()
 
     print("test")
