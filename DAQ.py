@@ -3,6 +3,7 @@ import can
 import time
 from DAQState import DAQState
 from messageIDs import canMessageSort, can_messages_cols
+from ReadState import read_state
 import csv
 import threading
 from labjack import ljm
