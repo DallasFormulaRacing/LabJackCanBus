@@ -24,25 +24,17 @@ class DAQObject:
         self.file = open(self.output_file, mode='w')
         self.writer = csv.writer(self.file)
         self.ecu_columns = can_messages_cols
-        self.ecu_df = pd.Dataframe(self.ecu_columns)
+        self.ecu_df = pd.DataFrame(self.ecu_columns)
         self.ECUData = [None] * 16 # why 16 ?
         self.LJData = []
         self.writeData = [None]
         self.handle = ljm.openS("T7")
-        info = ljm.getHandleInfo(self.handle)
-        self.print_labjack_info(info)
 
         self.canbus = threading.Thread(target=self.readCAN)
         self.run = threading.Thread(target=self.DAQRun)
         self.can_read_lock = threading.Lock()
         self.daq_run_lock = threading.Lock()
         self.daq_run_lock.acquire()
-
-    def print_labjack_info(self, info) -> None:
-        print(f"""\nOpened a LabJack with Device type: {info[0]},\n
-            Connection type: {info[1]},\n Serial number: {info[2]},\n
-            IP address: {ljm.numberToIP(info[3])},\n Port: {info[4]},\n
-            Max bytes per MB: {info[5]}\n""")
 
     def setSMState(self, nextState: DAQState) -> None:
         self.currentState = nextState
@@ -98,7 +90,7 @@ class DAQObject:
                         break
 
                     print("LabJack Error", ljm.LJMError)
-                    self.write_zero_row()
+                    # self.write_zero_row()
 
                 self.ecu_df.to_csv(self.output_file, index=False)
 
@@ -108,7 +100,7 @@ class DAQObject:
                 # self.writer.writerow(self.writeData)
                 # self.writeData.clear()
 
-        self.can_read_lock.release()
+            self.can_read_lock.release()
 
     def __del__(self):
 
@@ -118,7 +110,6 @@ class DAQObject:
 if __name__ == "__main__":
 
     DAQ = DAQObject("data/output.csv")
-    print(DAQ.ecu_df)
     DAQ.start_threads()
 
     print("test")
