@@ -2,7 +2,7 @@ import os
 import can
 import time
 from DAQState import DAQState
-from messageIDs import canMessageSort, can_messages
+from messageIDs import canMessageSort, can_messages_cols
 import csv
 import threading
 from labjack import ljm
@@ -23,7 +23,7 @@ class DAQObject:
         self.output_file = output_file
         self.file = open(self.output_file, mode='w')
         self.writer = csv.writer(self.file)
-        self.ecu_columns = can_messages
+        self.ecu_columns = can_messages_cols
         self.ecu_df = pd.Dataframe(self.ecu_columns)
         self.ECUData = [None] * 16
         self.LJData = []
@@ -58,12 +58,11 @@ class DAQObject:
 
         while True:
             with can.Bus() as bus:
-                index = 0
                 self.daq_run_lock.acquire()
                 msg = bus.recv()
-
-                self.ecu_df.loc[index, str(msg.arbitration_id)] = msg.data
-                index += 1
+                self.ecu_df.loc[self.ecu_df.index, "time"] = msg.timestamp
+                self.ecu_df.loc[self.ecu_df.index,
+                                str(msg.arbitration_id)] = msg.data
                 self.daq_run_lock.release()
 
     def resolveError(self) -> bool:
@@ -71,6 +70,10 @@ class DAQObject:
             return True
         except ljm.LJMError:
             return False
+
+    def write_zero_row(self) -> None:
+        for col in self.ecu_columns:
+            self.ecu_df.loc[self.ecu_df.index, col] = 0
 
     def DAQRun(self) -> None:
 
@@ -98,12 +101,15 @@ class DAQObject:
                             break
 
                         print("LabJack Error", ljm.LJMError)
+                        self.write_zero_row()
+
+                    self.ecu_df.to_csv(self.output_file, index=False)
 
                     # recordedTime = time.time()
-                    self.writeData.append(time.time())
-                    self.writeData.extend(self.ECUData)
-                    self.writer.writerow(self.writeData)
-                    self.writeData.clear()
+                    # self.writeData.append(time.time())
+                    # self.writeData.extend(self.ECUData)
+                    # self.writer.writerow(self.writeData)
+                    # self.writeData.clear()
 
             self.can_read_lock.release()
 
