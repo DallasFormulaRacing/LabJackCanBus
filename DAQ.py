@@ -68,15 +68,15 @@ class DAQObject:
             self.ecu_df.loc[self.ecu_df.index, col] = 0
 
     def DAQRun(self) -> None:
-        
+
 
         nextTime = time.time()
 
         while True:
-            
+
             self.can_read_lock.acquire()
-            button_clicked = read_state.read_button_state()
-            
+            button_clicked = read_state.read_button_state(self.handle)
+
             if time.time() < nextTime:
                 time.sleep(0)
 
