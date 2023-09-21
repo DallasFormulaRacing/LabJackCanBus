@@ -68,40 +68,44 @@ class DAQObject:
             self.ecu_df.loc[self.ecu_df.index, col] = 0
 
     def DAQRun(self) -> None:
+        
 
         nextTime = time.time()
 
-        while True: # while what is true ?
+        while True:
+            
             self.can_read_lock.acquire()
+            button_clicked = read_state.read_button_state()
             
             if time.time() < nextTime:
                 time.sleep(0)
 
-            if self.currentState == DAQState.INIT:
-                self.setSMState(DAQState.COLLECTING)
+            if button_clicked:
+                if self.currentState == DAQState.INIT:
+                    self.setSMState(DAQState.COLLECTING)
 
-            if self.currentState == DAQState.COLLECTING:
+                if self.currentState == DAQState.COLLECTING:
 
-                try:
-                    print(self.readLJ())
-                except ljm.LJMError:
-                    self.currentState == DAQState.ERROR
+                    try:
+                        print(self.readLJ())
+                    except ljm.LJMError:
+                        self.currentState == DAQState.ERROR
 
-                    if self.resolveError():
-                        break
+                        if self.resolveError():
+                            break
 
-                    print("LabJack Error", ljm.LJMError)
-                    # self.write_zero_row()
+                        print("LabJack Error", ljm.LJMError)
+                        # self.write_zero_row()
 
-                self.ecu_df.to_csv(self.output_file, index=False)
+                    self.ecu_df.to_csv(self.output_file, index=False)
 
-                # recordedTime = time.time()
-                # self.writeData.append(time.time())
-                # self.writeData.extend(self.ECUData)
-                # self.writer.writerow(self.writeData)
-                # self.writeData.clear()
+                    # recordedTime = time.time()
+                    # self.writeData.append(time.time())
+                    # self.writeData.extend(self.ECUData)
+                    # self.writer.writerow(self.writeData)
+                    # self.writeData.clear()
 
-            self.can_read_lock.release()
+                self.can_read_lock.release()
 
     def __del__(self):
 

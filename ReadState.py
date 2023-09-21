@@ -1,3 +1,4 @@
+import time
 from labjack import ljm
 from DAQState import DAQState
 
@@ -20,9 +21,13 @@ class read_state:
     self.currentState = DAQState.COLLECTING
     result = ljm.eReadName(self.handle, name)
 
-    print("\n%s reading : %f V" % (name, result))
+    if result <= 5.0:
+      print("\n%s reading : %f V" % (name, result))
+      return True
+    else:
+      print("\n%s reading : %f V" % (name, result))
+      return False
 
-    return True
   
   def close_read(self):
     self.currentState = DAQState.SAVING
