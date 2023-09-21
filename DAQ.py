@@ -99,13 +99,7 @@ class DAQObject:
 
                     self.ecu_df.to_csv(self.output_file, index=False)
 
-                    # recordedTime = time.time()
-                    # self.writeData.append(time.time())
-                    # self.writeData.extend(self.ECUData)
-                    # self.writer.writerow(self.writeData)
-                    # self.writeData.clear()
-
-                self.can_read_lock.release()
+            self.can_read_lock.release()
 
     def __del__(self):
 
