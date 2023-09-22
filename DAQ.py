@@ -100,6 +100,8 @@ class DAQObject:
                     self.ecu_df.to_csv(self.output_file, index=False)
 
             self.can_read_lock.release()
+            
+            self.currentState = DAQState.SAVING
 
     def __del__(self):
 
