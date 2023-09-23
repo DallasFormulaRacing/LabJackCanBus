@@ -31,3 +31,7 @@ class read_state:
     def close_read(self):
         self.currentState = DAQState.SAVING
         ljm.close(self.handle)
+
+    def open_read(self):
+        self.currentState = DAQState.COLLECTING
+        ljm.open(self.handle)

@@ -96,7 +96,10 @@ class DAQObject:
 
                         print("LabJack Error", ljm.LJMError)
                         # self.write_zero_row()
-
+            else:
+                read_state().close_read()
+                if self.currentState == DAQState.SAVING:
+                    print("Saving data: \n", self.ecu_df)
                     self.ecu_df.to_csv(self.output_file, index=False)
 
             self.can_read_lock.release()
