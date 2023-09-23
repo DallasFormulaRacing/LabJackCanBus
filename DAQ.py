@@ -26,7 +26,7 @@ class DAQObject:
         self.writer = csv.writer(self.file)
         self.ecu_columns = can_messages_cols
         self.ecu_df = pd.DataFrame(self.ecu_columns)
-        self.ECUData = [None] * 16 # why 16 ?
+        self.ECUData = [None] * 16  # why 16 ?
         self.LJData = []
         self.writeData = [None]
         self.handle = ljm.openS("T7")
@@ -54,7 +54,8 @@ class DAQObject:
                 self.daq_run_lock.acquire()
                 msg = bus.recv()
                 self.ecu_df.loc[self.ecu_df.index, "time"] = msg.timestamp
-                self.ecu_df.loc[self.ecu_df.index, str(msg.arbitration_id)] = msg.data
+                self.ecu_df.loc[self.ecu_df.index, str(
+                    msg.arbitration_id)] = msg.data
                 self.daq_run_lock.release()
 
     def resolveError(self) -> bool:
@@ -68,7 +69,6 @@ class DAQObject:
             self.ecu_df.loc[self.ecu_df.index, col] = 0
 
     def DAQRun(self) -> None:
-
 
         nextTime = time.time()
 
@@ -96,15 +96,16 @@ class DAQObject:
 
                         print("LabJack Error", ljm.LJMError)
                         # self.write_zero_row()
-            else:
-                read_state().close_read()
-                if self.currentState == DAQState.SAVING:
-                    print("Saving data: \n", self.ecu_df)
+
                     self.ecu_df.to_csv(self.output_file, index=False)
 
+                    # recordedTime = time.time()
+                    # self.writeData.append(time.time())
+                    # self.writeData.extend(self.ECUData)
+                    # self.writer.writerow(self.writeData)
+                    # self.writeData.clear()
+
             self.can_read_lock.release()
-            
-            self.currentState = DAQState.SAVING
 
     def __del__(self):
 
