@@ -12,11 +12,6 @@ and false when it is not pressed. when pressed in Collecting State else in the E
 
 class read_state:
 
-    def __init__(self):
-        self.currentState = DAQState.INIT
-        self.handle = ljm.openS("T7", "ANY", "ANY")
-        self.reading = 0.0
-
     def read_button_state(handle) -> bool:
         name = "AIN0"
         result = ljm.eReadName(handle, name)
@@ -28,10 +23,5 @@ class read_state:
             print(f"\n{name} reading : {result} V")
             return False
 
-    def close_read(self):
-        self.currentState = DAQState.SAVING
-        ljm.close(self.handle)
-
-    def open_read(self):
-        self.currentState = DAQState.COLLECTING
-        ljm.open(self.handle)
+    def close_read(handle):
+        ljm.close(handle)
