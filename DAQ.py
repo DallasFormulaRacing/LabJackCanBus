@@ -82,6 +82,10 @@ class DAQObject:
 
             if button_clicked:
                 if self.currentState == DAQState.INIT:
+                    print("collecting")
+                    self.setSMState(DAQState.COLLECTING)
+                elif self.currentState == DAQState.SAVING:
+                    print("collecting")
                     self.setSMState(DAQState.COLLECTING)
 
                 if self.currentState == DAQState.COLLECTING:
@@ -97,13 +101,16 @@ class DAQObject:
                         print("LabJack Error", ljm.LJMError)
                         # self.write_zero_row()
 
+            else:
+                if self.currentState == DAQState.COLLECTING:
                     self.ecu_df.to_csv(self.output_file, index=False)
-
-                    # recordedTime = time.time()
-                    # self.writeData.append(time.time())
-                    # self.writeData.extend(self.ECUData)
-                    # self.writer.writerow(self.writeData)
-                    # self.writeData.clear()
+                    self.setSMState(DAQState.SAVING)
+            
+            # recordedTime = time.time()
+            # self.writeData.append(time.time())
+            # self.writeData.extend(self.ECUData)
+            # self.writer.writerow(self.writeData)
+            # self.writeData.clear()
 
             self.can_read_lock.release()
 
