@@ -2,12 +2,13 @@ import os
 import can
 import time
 from DAQState import DAQState
-from messageIDs import canMessageSort
+from messageIDs import canMessageSort, can_messages_cols
+from ReadState import read_state
 import csv
 import threading
 from labjack import ljm
+import pandas as pd
 
-global ECUData
 
 can.rc['interface'] = 'socketcan'
 os.system('sudo ip link set can0 type can bitrate 250000')
@@ -23,12 +24,12 @@ class DAQObject:
         self.output_file = output_file
         self.file = open(self.output_file, mode='w')
         self.writer = csv.writer(self.file)
-        self.ECUData = [None] * 16
+        self.ecu_columns = can_messages_cols
+        self.ecu_df = pd.DataFrame(self.ecu_columns)
+        self.ECUData = [None] * 16  # why 16 ?
         self.LJData = []
         self.writeData = [None]
         self.handle = ljm.openS("T7")
-        info = ljm.getHandleInfo(self.handle)
-        self.print_labjack_info(info)
 
         self.canbus = threading.Thread(target=self.readCAN)
         self.run = threading.Thread(target=self.DAQRun)
@@ -36,13 +37,7 @@ class DAQObject:
         self.daq_run_lock = threading.Lock()
         self.daq_run_lock.acquire()
 
-    def print_labjack_info(self, info):
-        print(f"""\nOpened a LabJack with Device type: {info[0]},\n
-            Connection type: {info[1]},\n Serial number: {info[2]},\n
-            IP address: {ljm.numberToIP(info[3])},\n Port: {info[4]},\n
-            Max bytes per MB: {info[5]}\n""")
-
-    def setSMState(self, nextState: DAQState):
+    def setSMState(self, nextState: DAQState) -> None:
         self.currentState = nextState
 
     def readLJ(self):
@@ -58,23 +53,39 @@ class DAQObject:
             with can.Bus() as bus:
                 self.daq_run_lock.acquire()
                 msg = bus.recv()
-                index = canMessageSort.get(msg.arbitration_id)
-                self.ECUData[index] = msg.data
+                self.ecu_df.loc[self.ecu_df.index, "time"] = msg.timestamp
+                self.ecu_df.loc[self.ecu_df.index, str(
+                    msg.arbitration_id)] = msg.data
                 self.daq_run_lock.release()
 
-    def DAQRun(self):
+    def resolveError(self) -> bool:
+        try:
+            return True
+        except ljm.LJMError:
+            return False
+
+    def write_zero_row(self) -> None:
+        for col in self.ecu_columns:
+            self.ecu_df.loc[self.ecu_df.index, col] = 0
+
+    def DAQRun(self) -> None:
 
         nextTime = time.time()
 
         while True:
+
             self.can_read_lock.acquire()
+            button_clicked = read_state.read_button_state(self.handle)
+
             if time.time() < nextTime:
                 time.sleep(0)
 
-            else:
-                nextTime = time.time()
-
+            if button_clicked:
                 if self.currentState == DAQState.INIT:
+                    print("collecting")
+                    self.setSMState(DAQState.COLLECTING)
+                elif self.currentState == DAQState.SAVING:
+                    print("collecting")
                     self.setSMState(DAQState.COLLECTING)
 
                 if self.currentState == DAQState.COLLECTING:
@@ -82,18 +93,26 @@ class DAQObject:
                     try:
                         print(self.readLJ())
                     except ljm.LJMError:
-                        print("LabJack Error", ljm.LJMError)
+                        self.currentState == DAQState.ERROR
 
-                    # recordedTime = time.time()
-                    self.writeData.append(time.time())
-                    self.writeData.extend(self.ECUData)
-                    self.writer.writerow(self.writeData)
-                    self.writeData.clear()
+                        if self.resolveError():
+                            break
+
+                        print("LabJack Error", ljm.LJMError)
+                        # self.write_zero_row()
+
+            else:
+                if self.currentState == DAQState.COLLECTING:
+                    self.ecu_df.to_csv(self.output_file, index=False)
+                    self.setSMState(DAQState.SAVING)
+            
+            # recordedTime = time.time()
+            # self.writeData.append(time.time())
+            # self.writeData.extend(self.ECUData)
+            # self.writer.writerow(self.writeData)
+            # self.writeData.clear()
 
             self.can_read_lock.release()
-
-        self.canbus.join()
-        self.run.join()
 
     def __del__(self):
 
@@ -102,7 +121,7 @@ class DAQObject:
 
 if __name__ == "__main__":
 
-    DAQ = DAQObject("output.csv")
+    DAQ = DAQObject("data/output.csv")
     DAQ.start_threads()
 
     print("test")

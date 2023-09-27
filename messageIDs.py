@@ -16,6 +16,25 @@ canMessages = {
     '218103368': ['Fuel Comp-Barometer', 'Fuel Comp-MAP'],
     '218099784': ['Ignition Comp-Air Temp', 'Ignition Comp-Coolant Temp', 'Ignition Comp-Barometer', 'Ignition Comp-MAP'],
 }
+
+can_messages_cols = ["time",
+                     "218099784",
+                     "218100040",
+                     "218100296",
+                     "218100552",
+                     "218100808",
+                     "218101064",
+                     "218101320",
+                     "218101576",
+                     "218101832",
+                     "218102088",
+                     "218102344",
+                     "218102600",
+                     "218102856",
+                     "218103112",
+                     "218103368",
+                     "218091592"]
+
 canMessageSort = {
     218099784: 0,
     218100040: 1,
