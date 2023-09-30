@@ -44,14 +44,14 @@ class DAQObject:
     def setSMState(self, nextState: DAQState) -> None:
         self.currentState = nextState
 
-    def readLJ(self):
+    def readLJ(self) -> float:
         return ljm.eReadName(self.handle, "AIN0")
 
-    def start_threads(self):
+    def start_threads(self) -> None:
         self.canbus.start()
         self.run.start()
 
-    def readCAN(self):
+    def readCAN(self) -> None:
 
         while True:
             if self.currentState == DAQState.SAVING:
@@ -78,6 +78,34 @@ class DAQObject:
         for col in self.ecu_columns:
             self.ecu_df.loc[self.ecu_df.index, col] = 0
 
+    def write_linpot_data(self,index: int) -> None:
+
+        current_time = time.time()
+        self.linpot_df.loc[index, "Time"] = current_time
+        self.linpot_df.loc[index, "Front Right"] = ljm.eReadName(
+            self.handle, "AIN1")
+        self.linpot_df.loc[index, "Front Left"] = ljm.eReadName(
+            self.handle, "AIN2")
+        self.linpot_df.loc[index, "Rear Right"] = ljm.eReadName(
+            self.handle, "AIN3")
+        self.linpot_df.loc[index, "Rear Left"] = ljm.eReadName(
+            self.handle, "AIN4")
+
+    def write_ecu_data(self) -> None:
+        current_time = time.time()
+        self.writeData.append(current_time)
+        self.writeData.extend(self.ECUData)
+        self.writer.writerow(self.writeData)
+        self.writeData.clear()
+
+    def set_button_state_on_start(self) -> None:
+        if self.currentState == DAQState.INIT:
+            print("collecting")
+            self.setSMState(DAQState.COLLECTING)
+        elif self.currentState == DAQState.SAVING:
+            print("collecting")
+            self.setSMState(DAQState.COLLECTING)
+
     def DAQRun(self) -> None:
 
         nextTime = time.time()
@@ -94,35 +122,19 @@ class DAQObject:
                 nextTime = time.time()
 
             if button_clicked:
-                if self.currentState == DAQState.INIT:
-                    print("collecting")
-                    self.setSMState(DAQState.COLLECTING)
-                elif self.currentState == DAQState.SAVING:
-                    print("collecting")
-                    self.setSMState(DAQState.COLLECTING)
+                self.set_button_state_on_start()
 
                 if self.currentState == DAQState.COLLECTING:
 
                     try:
                         # print(ljm.eReadName(
                         #     self.handle, "AIN1"))
-                        current_time = time.time()
-                        self.linpot_df.loc[index, "Time"] = current_time
-                        self.linpot_df.loc[index, "Front Right"] = ljm.eReadName(
-                            self.handle, "AIN1")
-                        self.linpot_df.loc[index, "Front Left"] = ljm.eReadName(
-                            self.handle, "AIN2")
-                        self.linpot_df.loc[index, "Rear Right"] = ljm.eReadName(
-                            self.handle, "AIN3")
-                        self.linpot_df.loc[index, "Rear Left"] = ljm.eReadName(
-                            self.handle, "AIN4")
+                        self.write_linpot_data(index)
                         index += 1
                         # print(self.readLJ())
                         print(self.linpot_df.tail(1))
-                        self.writeData.append(current_time)
-                        self.writeData.extend(self.ECUData)
-                        self.writer.writerow(self.writeData)
-                        self.writeData.clear()
+                        self.write_ecu_data()
+
                     except ljm.LJMError:
                         self.currentState == DAQState.ERROR
 
@@ -151,7 +163,7 @@ class DAQObject:
 
             self.can_read_lock.release()
 
-    def __del__(self):
+    def __del__(self) -> None:
 
         os.system('sudo ifconfig can0 down')
 
