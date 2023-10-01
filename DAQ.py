@@ -9,6 +9,7 @@ import threading
 from labjack import ljm
 import pandas as pd
 
+TIME = time.gmtime()
 
 can.rc['interface'] = 'socketcan'
 os.system('sudo ip link set can0 type can bitrate 250000')
@@ -72,13 +73,9 @@ class DAQObject:
             with can.Bus() as bus:
                 self.daq_run_lock.acquire()
                 msg = bus.recv()
-                # self.ecu_df.loc[self.ecu_df.index, "time"] = msg.timestamp
-                # self.ecu_df.loc[self.ecu_df.index, str(
-                #     msg.arbitration_id)] = msg.data
 
                 index = canMessageSort.get(msg.arbitration_id)
                 self.ECUData[index] = msg.data
-                # self.ecu_df.append(pd.DataFrame(self.ECUData))
                 self.daq_run_lock.release()
 
     def resolveError(self) -> bool:
@@ -117,9 +114,7 @@ class DAQObject:
 
                 if self.currentState == DAQState.COLLECTING:
 
-                    try:  
-                        # print(ljm.eReadName(
-                        #     self.handle, "AIN1"))
+                    try:
                         current_time = time.time()
                         self.linpot_df.loc[index, "Time"] = current_time
                         self.linpot_df.loc[index, "Front Right"] = ljm.eReadName(
@@ -148,7 +143,7 @@ class DAQObject:
                             break
 
                         print("LabJack Efrrfffor", ljm.LJMError)
-                        # self.write_zero_row()
+
 
             else:
                 if self.currentState == DAQState.COLLECTING:
@@ -160,13 +155,6 @@ class DAQObject:
                         index=False)
                     self.setSMState(DAQState.SAVING)
                     self.run_count += 1
-                    # print(self.ecu_df)
-
-            # recordedTime = time.time()
-            # self.writeData.append(time.time())
-            # self.writeData.extend(self.ECUData)
-            # self.writer.writerow(self.writeData)
-            # self.writeData.clear()
 
             self.can_read_lock.release()
 

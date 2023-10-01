@@ -1,3 +1,4 @@
+import time
 from labjack import ljm
 from DAQState import DAQState
 
@@ -8,22 +9,22 @@ need to implement it in a way that will return bool true when the button is pres
 and false when it is not pressed. when pressed in Collecting State else in the Error state
 '''
 
+
 class read_state:
-  
-  def __init__(self):
-    self.currentState = DAQState.INIT
-    self.handle = ljm.openS("T7", "ANY", "ANY")
-    self.reading = 0.0
-  
-  def read_button_state(self) -> bool:
-    name = "AIN0"
-    self.currentState = DAQState.COLLECTING
-    result = ljm.eReadName(self.handle, name)
 
-    print("\n%s reading : %f V" % (name, result))
+    def check_button_state(result: float) -> bool:
+        if result > 1:
+            return True
+        else:
+            return False
 
-    return True
-  
-  def close_read(self):
-    self.currentState = DAQState.SAVING
-    ljm.close(self.handle)
+    def read_button_state(handle) -> bool:
+        name = "AIN0"
+        result = ljm.eReadName(handle, name)
+        # print(f"\n{name} reading : {result} V")
+        button_pressed = read_state.check_button_state(result)
+        return button_pressed
+
+    def close_read(self):
+        self.currentState = DAQState.SAVING
+        ljm.close(self.handle)
