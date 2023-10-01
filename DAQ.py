@@ -39,6 +39,19 @@ class DAQObject:
         self.daq_run_lock = threading.Lock()
         # self.daq_run_lock.acquire()
 
+        self.fr_names = ["AIN1_RESOLUTION_INDEX"]
+        self.fl_names = ["AIN2_RESOLUTION_INDEX"]
+        self.rr_names = ["AIN3_RESOLUTION_INDEX"]
+        self.rl_names = ["AIN4_RESOLUTION_INDEX"]
+        self.num_frames = len(self.fr_names)
+        self.aValues = [8]
+        ljm.eWriteNames(self.handle,self.num_frames,self.fr_names,self.aValues)
+        ljm.eWriteNames(self.handle,self.num_frames,self.fl_names,self.aValues)
+        ljm.eWriteNames(self.handle,self.num_frames,self.rr_names,self.aValues)
+        ljm.eWriteNames(self.handle,self.num_frames,self.rl_names,self.aValues)
+
+
+
         self.run_count = 0
 
     def setSMState(self, nextState: DAQState) -> None:
@@ -86,6 +99,7 @@ class DAQObject:
 
             self.can_read_lock.acquire()
             button_clicked = read_state.read_button_state(self.handle)
+            # print(button_clicked)
 
             if time.time() < nextTime:
                 time.sleep(0)
@@ -123,17 +137,22 @@ class DAQObject:
                         self.writeData.extend(self.ECUData)
                         self.writer.writerow(self.writeData)
                         self.writeData.clear()
+                        self.linpot_df.to_csv()
+                        if index % 10 == 0:
+                            self.linpot_df.to_csv(
+                                f"{self.output_file}_linpot.csv", index=False)
                     except ljm.LJMError:
                         self.currentState == DAQState.ERROR
 
                         if self.resolveError():
                             break
 
-                        print("LabJack Error", ljm.LJMError)
+                        print("LabJack Efrrfffor", ljm.LJMError)
                         # self.write_zero_row()
 
             else:
                 if self.currentState == DAQState.COLLECTING:
+                    print("savivng")
                     self.linpot_df.to_csv(
                         f"{self.output_file}_linpot.csv", index=False)
                     self.linpot_df.to_csv(
@@ -158,8 +177,9 @@ class DAQObject:
 
 if __name__ == "__main__":
 
-    DAQ = DAQObject("data/output")
+    DAQ = DAQObject("data/output1")
     DAQ.start_threads()
 
     print("test")
     time.sleep(10)
+
