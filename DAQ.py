@@ -117,7 +117,7 @@ class DAQObject:
 
                 if self.currentState == DAQState.COLLECTING:
 
-                    try:
+                    try:  
                         # print(ljm.eReadName(
                         #     self.handle, "AIN1"))
                         current_time = time.time()
