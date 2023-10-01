@@ -51,8 +51,6 @@ class DAQObject:
         ljm.eWriteNames(self.handle,self.num_frames,self.rr_names,self.aValues)
         ljm.eWriteNames(self.handle,self.num_frames,self.rl_names,self.aValues)
 
-
-
         self.run_count = 0
 
     def setSMState(self, nextState: DAQState) -> None:
@@ -87,6 +85,9 @@ class DAQObject:
     def write_zero_row(self) -> None:
         for col in self.ecu_columns:
             self.ecu_df.loc[self.ecu_df.index, col] = 0
+
+    def sync_data(self):
+        pass
 
     def DAQRun(self) -> None:
 
