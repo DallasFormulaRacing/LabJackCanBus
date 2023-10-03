@@ -40,9 +40,9 @@ class read_xl:
       yBytes = [0] * 2
       zBytes = [0] * 2
 
-      xBytes = ljm.eReadAddressArray(handle, read_x_axis, 2)
-      yBytes = ljm.eReadAddressArray(handle, read_y_axis, 2)
-      zBytes = ljm.eReadAddressArray(handle, read_z_axis, 2)
+      xBytes = ljm.eReadAddressByteArray(handle, read_x_axis, 2)
+      yBytes = ljm.eReadAddressByteArray(handle, read_y_axis, 2)
+      zBytes = ljm.eReadAddressByteArray(handle, read_z_axis, 2)
 
       x_in_bits = self.append_bits(xBytes)
       y_in_bits = self.append_bits(yBytes)
