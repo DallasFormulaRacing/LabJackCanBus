@@ -19,7 +19,7 @@ class read_state:
             return False
 
     def read_button_state(handle) -> bool:
-        name = "AIN0"
+        name = "FIO2"
         result = ljm.eReadName(handle, name)
         # print(f"\n{name} reading : {result} V")
         button_pressed = read_state.check_button_state(result)
