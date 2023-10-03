@@ -24,7 +24,7 @@ class DAQObject:
         self.currentState = DAQState.INIT
         self.output_file = output_file
         self.file = open("ecudata.csv", mode='w')
-        self.writer = csv.writer(self.file)
+        self.writer = can.CSVWriter(self.file, append=True)
         self.ecu_columns = can_messages_cols
         self.ecu_df = pd.DataFrame(columns=self.ecu_columns)
         self.linpot_df = pd.DataFrame(
@@ -46,12 +46,10 @@ class DAQObject:
         self.rl_names = ["AIN4_RESOLUTION_INDEX"]
         self.num_frames = len(self.fr_names)
         self.aValues = [12]
-        ljm.eWriteNames(self.handle,self.num_frames,self.fr_names,self.aValues)
-        ljm.eWriteNames(self.handle,self.num_frames,self.fl_names,self.aValues)
-        ljm.eWriteNames(self.handle,self.num_frames,self.rr_names,self.aValues)
-        ljm.eWriteNames(self.handle,self.num_frames,self.rl_names,self.aValues)
-
-
+        ljm.eWriteNames(self.handle, self.num_frames, self.fr_names, self.aValues)
+        ljm.eWriteNames(self.handle, self.num_frames, self.fl_names, self.aValues)
+        ljm.eWriteNames(self.handle, self.num_frames, self.rr_names, self.aValues)
+        ljm.eWriteNames(self.handle, self.num_frames, self.rl_names, self.aValues)
 
         self.run_count = 0
 
@@ -73,13 +71,9 @@ class DAQObject:
             with can.Bus() as bus:
                 self.daq_run_lock.acquire()
                 msg = bus.recv()
-                # self.ecu_df.loc[self.ecu_df.index, "time"] = msg.timestamp
-                # self.ecu_df.loc[self.ecu_df.index, str(
-                #     msg.arbitration_id)] = msg.data
 
                 index = canMessageSort.get(msg.arbitration_id)
                 self.ECUData[index] = msg.data
-                # self.ecu_df.append(pd.DataFrame(self.ECUData))
                 self.daq_run_lock.release()
 
     def resolveError(self) -> bool:
@@ -118,7 +112,7 @@ class DAQObject:
 
                 if self.currentState == DAQState.COLLECTING:
 
-                    try:  
+                    try:
                         # print(ljm.eReadName(
                         #     self.handle, "AIN1"))
                         current_time = time.time()
@@ -140,9 +134,6 @@ class DAQObject:
                         self.writer.writerow(self.writeData)
                         self.writeData.clear()
                         self.linpot_df.to_csv()
-                        if index % 10 == 0:
-                            self.linpot_df.to_csv(
-                                f"{self.output_file}_linpot.csv", index=False)
                     except ljm.LJMError:
                         self.currentState == DAQState.ERROR
 
@@ -162,13 +153,6 @@ class DAQObject:
                         index=False)
                     self.setSMState(DAQState.SAVING)
                     self.run_count += 1
-                    # print(self.ecu_df)
-
-            # recordedTime = time.time()
-            # self.writeData.append(time.time())
-            # self.writeData.extend(self.ECUData)
-            # self.writer.writerow(self.writeData)
-            # self.writeData.clear()
 
             self.can_read_lock.release()
 
@@ -179,9 +163,8 @@ class DAQObject:
 
 if __name__ == "__main__":
 
-    DAQ = DAQObject("data/output1")
+    DAQ = DAQObject("data/output2")
     DAQ.start_threads()
 
     print("test")
     time.sleep(10)
-
