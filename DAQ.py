@@ -4,6 +4,7 @@ import time
 from DAQState import DAQState
 from messageIDs import canMessageSort, can_messages_cols
 from ReadState import read_state
+from read_xl_analog import read_xl_analog
 import csv
 import threading
 from labjack import ljm
@@ -131,6 +132,7 @@ class DAQObject:
                         self.linpot_df.loc[index, "Rear Left"] = ljm.eReadName(
                             self.handle, "AIN4")
                         index += 1
+                        read_xl_analog.read_xl(self.handle)
                         # print(self.readLJ())
                         print(self.linpot_df.tail(1))
                         self.writeData.append(current_time)
