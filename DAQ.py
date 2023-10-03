@@ -28,7 +28,7 @@ class DAQObject:
         self.ecu_df = pd.DataFrame(columns=self.ecu_columns)
         self.linpot_df = pd.DataFrame(
             columns=["Time", "Front Right", "Front Left", "Rear Right", "Rear Left"])
-        self.ECUData = [None] * 16  # why 16 ?
+        self.ECUData = [None] * 16
         self.LJData = []
         self.writeData = [None]
         self.handle = ljm.openS("T7")
@@ -44,7 +44,7 @@ class DAQObject:
         self.rr_names = ["AIN3_RESOLUTION_INDEX"]
         self.rl_names = ["AIN4_RESOLUTION_INDEX"]
         self.num_frames = len(self.fr_names)
-        self.aValues = [8]
+        self.aValues = [12]
         ljm.eWriteNames(self.handle,self.num_frames,self.fr_names,self.aValues)
         ljm.eWriteNames(self.handle,self.num_frames,self.fl_names,self.aValues)
         ljm.eWriteNames(self.handle,self.num_frames,self.rr_names,self.aValues)
