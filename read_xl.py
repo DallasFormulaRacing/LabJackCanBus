@@ -54,6 +54,7 @@ class read_xl:
 
       print("x: ", x_decimal, " y: ", y_decimal, " z: ", z_decimal)
 
+  @staticmethod
   def append_bits(axis_list) -> str:
     low_byte = str(axis_list[0])
     high_byte = str(axis_list[1])
@@ -62,6 +63,7 @@ class read_xl:
 
     return appended_bit
   
+  @staticmethod
   def convert_bit_to_dec(appended_bit) -> int:
     decimal_value = int(appended_bit)
 
