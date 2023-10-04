@@ -20,9 +20,9 @@ class read_xl:
       # Options bits
       ljm.eWriteName(handle, "I2C_OPTIONS", 0)
       # writing to slave
-      ljm.eWriteName(handle, "I2C_SLAVE_ADDRESS", 0x33)
+      ljm.eWriteName(handle, "I2C_SLAVE_ADDRESS", 0xd4)
 
-      numBytes = 6
+      numBytes = 6 # number of bytes to transmit
 
       while True:
           sleep(0.02)
@@ -38,29 +38,41 @@ class read_xl:
           read_x_axis = [0x28, 0x29]
           read_y_axis = [0x2A, 0x2B]
           read_z_axis = [0x2C, 0x2D]
+          who_am_i = [0x0f]
 
           xBytes = [0] * 2
           yBytes = [0] * 2
           zBytes = [0] * 2
+          who_buff = [0] * 1
           
-          xBytes = ljm.eWriteAddressByteArray(handle, "I2c_DATA_TX",read_x_axis, 2)
-          yBytes = ljm.eWriteAddressByteArray(handle, "I2c_DATA_TX",read_y_axis, 2)
-          zBytes = ljm.eWriteAddressByteArray(handle, "I2c_DATA_TX",read_z_axis, 2)
+          ljm.eWriteNameByteArray(handle, "I2C_DATA_TX", 2, read_x_axis)
+          ljm.eWriteNameByteArray(handle, "I2C_DATA_TX", 2, read_y_axis)
+          ljm.eWriteNameByteArray(handle, "I2C_DATA_TX", 2, read_z_axis)
+          ljm.eWriteNameByteArray(handle, "I2C_DATA_TX", 1, who_am_i)
           
+          
+          xBytes = ljm.eReadNameByteArray(handle, "I2C_DATA_RX", 2)
+          yBytes = ljm.eReadNameByteArray(handle, "I2C_DATA_RX", 2)
+          zBytes = ljm.eReadNameByteArray(handle, "I2C_DATA_RX", 2)
+          who_buff = ljm.eReadNameByteArray(handle, "I2C_DATA_RX", 1)
 
-          xBytes = ljm.eReadAddressByteArray(handle, read_x_axis, 2)
-          yBytes = ljm.eReadAddressByteArray(handle, read_y_axis, 2)
-          zBytes = ljm.eReadAddressByteArray(handle, read_z_axis, 2)
+         #  print("x: ", xBytes, " y: ", yBytes, " z: ", zBytes)
 
-          x_in_bits = read_xl.append_bits(xBytes)
-          y_in_bits = read_xl.append_bits(yBytes)
-          z_in_bits = read_xl.append_bits(zBytes)
+          print("who_am_i", who_buff)
 
-          x_decimal = read_xl.convert_bit_to_dec(x_in_bits)
-          y_decimal = read_xl.convert_bit_to_dec(y_in_bits)
-          z_decimal = read_xl.convert_bit_to_dec(z_in_bits)
+          # xBytes = ljm.eReadAddressByteArray(handle, read_x_axis, 2)
+          # yBytes = ljm.eReadAddressByteArray(handle, read_y_axis, 2)
+          # zBytes = ljm.eReadAddressByteArray(handle, read_z_axis, 2)
 
-          print("x: ", x_decimal, " y: ", y_decimal, " z: ", z_decimal)
+        #   x_in_bits = read_xl.append_bits(xBytes)
+        #   y_in_bits = read_xl.append_bits(yBytes)
+        #   z_in_bits = read_xl.append_bits(zBytes)
+
+        #   x_decimal = read_xl.convert_bit_to_dec(x_in_bits)
+        #   y_decimal = read_xl.convert_bit_to_dec(y_in_bits)
+        #   z_decimal = read_xl.convert_bit_to_dec(z_in_bits)
+
+        #  print("x: ", x_decimal, " y: ", y_decimal, " z: ", z_decimal)
 
   @staticmethod
   def append_bits(axis_list) -> str:

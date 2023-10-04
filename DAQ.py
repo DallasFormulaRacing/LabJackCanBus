@@ -114,6 +114,7 @@ class DAQObject:
                 if self.currentState == DAQState.COLLECTING:
 
                     try:
+                        read_xl.read_xl_input(self.handle)
                         # print(ljm.eReadName(
                         #     self.handle, "AIN1"))
                         current_time = time.time()
@@ -130,10 +131,10 @@ class DAQObject:
                         read_xl_analog.read_xl(self.handle)
                         # print(self.readLJ())
                         print(self.linpot_df.tail(1))
-                        self.writeData.append(current_time)
-                        self.writeData.extend(self.ECUData)
-                        self.writer.writerow(self.writeData)
-                        self.writeData.clear()
+                        # self.writeData.append(current_time)
+                        # self.writeData.extend(self.ECUData)
+                        # self.writer.write(self.writeData)
+                        # self.writeData.clear()
                         self.linpot_df.to_csv()
                     except ljm.LJMError:
                         self.currentState == DAQState.ERROR
