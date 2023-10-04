@@ -5,6 +5,7 @@ from DAQState import DAQState
 from messageIDs import canMessageSort, can_messages_cols
 from ReadState import read_state
 from read_xl_analog import read_xl_analog
+from read_xl import read_xl
 import csv
 import threading
 from labjack import ljm

@@ -5,7 +5,7 @@ from labjack import ljm
 
 
 class read_xl_analog:
-  
+
   def read_xl(handle):
     x_axis = "AIN13"
     y_axis = "AIN12"
@@ -16,3 +16,6 @@ class read_xl_analog:
     result_z = ljm.eReadName(handle, z_axis)
 
     print(f"\n{x_axis} reading : {result_x} V \n{y_axis} reading : {result_y} V \n{z_axis} reading : {result_z} V")
+
+  def convert_volt_to_g():
+    pass
