@@ -42,6 +42,11 @@ class read_xl:
           xBytes = [0] * 2
           yBytes = [0] * 2
           zBytes = [0] * 2
+          
+          xBytes = ljm.eWriteAddressByteArray(handle, "I2c_DATA_TX",read_x_axis, 2)
+          yBytes = ljm.eWriteAddressByteArray(handle, "I2c_DATA_TX",read_y_axis, 2)
+          zBytes = ljm.eWriteAddressByteArray(handle, "I2c_DATA_TX",read_z_axis, 2)
+          
 
           xBytes = ljm.eReadAddressByteArray(handle, read_x_axis, 2)
           yBytes = ljm.eReadAddressByteArray(handle, read_y_axis, 2)
