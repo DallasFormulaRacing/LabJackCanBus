@@ -10,7 +10,7 @@ import csv
 import threading
 from labjack import ljm
 import pandas as pd
-
+from datetime import datetime
 
 can.rc['interface'] = 'socketcan'
 os.system('sudo ip link set can0 type can bitrate 250000')
@@ -147,12 +147,15 @@ class DAQObject:
 
             else:
                 if self.currentState == DAQState.COLLECTING:
-                    print("savivng")
+                    print("saving")
+                    
+                    now = datetime.strftime(datetime.now(), "%Y-%m-%d_%H-%M-%S")
                     self.linpot_df.to_csv(
-                        f"{self.output_file}_linpot.csv", index=False)
-                    self.linpot_df.to_csv(
-                        f"{self.output_file}_linpot_{self.run_count}.csv",
-                        index=False)
+                        f"{self.output_file}_linpot_{now}.csv", index=False)
+                    
+                    # clear linpot_df
+                    self.linpot_df = pd.DataFrame(columns=self.linpot_df.columns)
+                    
                     self.setSMState(DAQState.SAVING)
                     self.run_count += 1
 
