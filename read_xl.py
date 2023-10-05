@@ -12,67 +12,52 @@ class read_xl:
   @staticmethod
   def read_xl_input(handle):
 
-      ljm.eWriteName(handle, "I2C_SDA_DIONUM", 1)
-      ljm.eWriteName(handle, "I2C_SCL_DIONUM", 0)
-      ljm.eWriteName(handle, "FIO2", 1)
-      ljm.eWriteName(handle, "I2C_SPEED_THROTTLE", 65000)
+    # For the T7 and other devices, using FIO0 and FIO1 for the SCL and SDA
+    # pins.
+    ljm.eWriteName(handle, "I2C_SDA_DIONUM", 1)  # SDA pin number = 1 (FIO1)
+    ljm.eWriteName(handle, "I2C_SCL_DIONUM", 0)  # SCL pin number = 0 (FIO0)
+    # Use FIO2 for power by setting it to output high
+    ljm.eWriteName(handle, "FIO2", 1)
 
-      # Options bits
-      ljm.eWriteName(handle, "I2C_OPTIONS", 0)
-      # writing to slave
-      ljm.eWriteName(handle, "I2C_SLAVE_ADDRESS", 0xd4)
+    # Speed throttle is inversely proportional to clock frequency. 0 = max.
+    ljm.eWriteName(handle, "I2C_SPEED_THROTTLE", 65000)  # Speed throttle = 65516 (~100 kHz)
 
-      numBytes = 6 # number of bytes to transmit
+    # Options bits:
+    #     bit0: Reset the I2C bus.
+    #     bit1: Restart w/o stop
+    #     bit2: Disable clock stretching.
+    ljm.eWriteName(handle, "I2C_OPTIONS", 0)  # Options = 0
 
-      while True:
-          sleep(0.02)
+    # The SHT3x address could be 0x44 or 0x45 depending on the address pin voltage
+    # A slave address of 0x44 indicates the ADDR pin is connected to a logic low
+    ljm.eWriteName(handle, "I2C_SLAVE_ADDRESS", 0xd4)
 
-          # Do a read only transaction to obtain the readings
-          # Set the number of bytes to transmit
-          ljm.eWriteName(handle, "I2C_NUM_BYTES_TX", 0)
-          # Set the number of bytes to receive
-          ljm.eWriteName(handle, "I2C_NUM_BYTES_RX", 6)
-          ljm.eWriteName(handle, "I2C_GO", 1)  # Do the I2C communications.
+    # Start with a single shot write command to the SHT3x sensor.
+    ljm.eWriteName(handle, "I2C_NUM_BYTES_TX", 1)  # Set the number of bytes to transmit
+    ljm.eWriteName(handle, "I2C_NUM_BYTES_RX", 0)  # Set the number of bytes to receive
 
-          # out_var = [low_byte, high_byte]
-          read_x_axis = [0x28, 0x29]
-          read_y_axis = [0x2A, 0x2B]
-          read_z_axis = [0x2C, 0x2D]
-          who_am_i = [0x0f]
+    # Set the TX bytes
+    numBytes = 1
+    # 0x24 = clock stretching disabled, 0x00 = high repeatability
+    aBytes = [0x0f]
+    ljm.eWriteNameByteArray(handle, "I2C_DATA_TX", numBytes, aBytes)
+    ljm.eWriteName(handle, "I2C_GO", 1)  # Do the I2C communications.
 
-          xBytes = [0] * 2
-          yBytes = [0] * 2
-          zBytes = [0] * 2
-          who_buff = [0] * 1
-          
-          ljm.eWriteNameByteArray(handle, "I2C_DATA_TX", 2, read_x_axis)
-          ljm.eWriteNameByteArray(handle, "I2C_DATA_TX", 2, read_y_axis)
-          ljm.eWriteNameByteArray(handle, "I2C_DATA_TX", 2, read_z_axis)
-          ljm.eWriteNameByteArray(handle, "I2C_DATA_TX", 1, who_am_i)
-          
-          
-          xBytes = ljm.eReadNameByteArray(handle, "I2C_DATA_RX", 2)
-          yBytes = ljm.eReadNameByteArray(handle, "I2C_DATA_RX", 2)
-          zBytes = ljm.eReadNameByteArray(handle, "I2C_DATA_RX", 2)
-          who_buff = ljm.eReadNameByteArray(handle, "I2C_DATA_RX", 1)
+    # The sensor needs at least 15ms for the measurement. Wait 20ms
+    sleep(0.02)
 
-         #  print("x: ", xBytes, " y: ", yBytes, " z: ", zBytes)
+    # Do a read only transaction to obtain the readings
+    ljm.eWriteName(handle, "I2C_NUM_BYTES_TX", 0)  # Set the number of bytes to transmit
+    ljm.eWriteName(handle, "I2C_NUM_BYTES_RX", 1)  # Set the number of bytes to receive
+    ljm.eWriteName(handle, "I2C_GO", 1)  # Do the I2C communications.
 
-          print("who_am_i", who_buff)
-
-          # xBytes = ljm.eReadAddressByteArray(handle, read_x_axis, 2)
-          # yBytes = ljm.eReadAddressByteArray(handle, read_y_axis, 2)
-          # zBytes = ljm.eReadAddressByteArray(handle, read_z_axis, 2)
-
-        #   x_in_bits = read_xl.append_bits(xBytes)
-        #   y_in_bits = read_xl.append_bits(yBytes)
-        #   z_in_bits = read_xl.append_bits(zBytes)
-
-        #   x_decimal = read_xl.convert_bit_to_dec(x_in_bits)
-        #   y_decimal = read_xl.convert_bit_to_dec(y_in_bits)
-        #   z_decimal = read_xl.convert_bit_to_dec(z_in_bits)
-
-        #  print("x: ", x_decimal, " y: ", y_decimal, " z: ", z_decimal)
+    # SHT3x sensors should always return 6 bytes for single shot acquisition:
+    # [temp MSB, temp LSB, CRC, RH MSB, RH LSB, CRC]
+    numBytes = 1
+    aBytes = [0]*1
+    aBytes = ljm.eReadNameByteArray(handle, "I2C_DATA_RX", numBytes)
+    data = aBytes
+    print("Data:" + data)
 
   @staticmethod
   def append_bits(axis_list) -> str:
