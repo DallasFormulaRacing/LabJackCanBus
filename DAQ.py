@@ -47,10 +47,10 @@ class DAQObject:
         self.rl_names = ["AIN4_RESOLUTION_INDEX"]
         self.num_frames = len(self.fr_names)
         self.aValues = [12]
-        ljm.eWriteNames(self.handle, self.num_frames, self.fr_names, self.aValues)
-        ljm.eWriteNames(self.handle, self.num_frames, self.fl_names, self.aValues)
-        ljm.eWriteNames(self.handle, self.num_frames, self.rr_names, self.aValues)
-        ljm.eWriteNames(self.handle, self.num_frames, self.rl_names, self.aValues)
+        ljm.eWriteNames(self.handle,self.num_frames,self.fr_names,self.aValues)
+        ljm.eWriteNames(self.handle,self.num_frames,self.fl_names,self.aValues)
+        ljm.eWriteNames(self.handle,self.num_frames,self.rr_names,self.aValues)
+        ljm.eWriteNames(self.handle,self.num_frames,self.rl_names,self.aValues)
 
         self.run_count = 0
 
