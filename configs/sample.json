@@ -1,0 +1,38 @@
+{
+    "Sensors":{
+    "Linpots": {
+        "inputs": [
+            {
+                "name": "Front Right",
+                "port": "AIN1"
+           },
+           {
+                "name": "Front Left",
+                "port": "AIN2"
+           }
+       ]
+   },
+   "Switch": {
+       "inputs": [
+            {
+                "name": "Saving Switch",
+                "port": "AIN0"
+           }
+       ]
+   },
+
+    "Accelerometers": {
+         "inputs": [
+                {
+                  "name": "Acc1",
+                  "port": [
+                         "AIN10",
+                          "AIN11",
+                          "AIN12"
+                       ]
+                }
+            ]  
+        }
+        
+    } 
+}
