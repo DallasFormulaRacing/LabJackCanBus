@@ -1,173 +1,94 @@
-import os
-import can
-import time
-from DAQState import DAQState
-from messageIDs import canMessageSort, can_messages_cols
-from ReadState import read_state
-from read_xl_analog import read_xl_analog
-from read_xl import read_xl
-import csv
 import threading
+import time
+from abc.Enums import DAQState
+from typing import TYPE_CHECKING, List
+
 from labjack import ljm
-import pandas as pd
-from datetime import datetime
 
-can.rc['interface'] = 'socketcan'
-os.system('sudo ip link set can0 type can bitrate 250000')
-os.system('sudo ifconfig can0 up')
-can0 = can.interface.Bus(channel="can0", interface="socketcan")
+from config.lj_logger import setup_logger
+from config.manager import ConfigManager
+from listeners import (AccelerometerListener, EngineControlUnitListener,
+                       LinpotListener)
+from ReadState import read_state
 
-
+if TYPE_CHECKING:
+    from abc.Listener import Listener 
+    
 class DAQObject:
+    def __init__(self, output_path: str, config_file: str = "config.json"):
+        self.config_manager = ConfigManager(config_file)
 
-    def __init__(self, output_file: str):
+        self._log = setup_logger("DAQ")
+        self._config = self.config_manager.get_config("DAQ")
 
         self.currentState = DAQState.INIT
-        self.output_file = output_file
-        self.file = open("ecudata.csv", mode='w')
-        self.writer = can.CSVWriter(self.file, append=True)
-        self.ecu_columns = can_messages_cols
-        self.ecu_df = pd.DataFrame(columns=self.ecu_columns)
-        self.linpot_df = pd.DataFrame(
-            columns=["Time", "Front Right", "Front Left", "Rear Right", "Rear Left"])
-        self.ECUData = [None] * 16
-        self.LJData = []
-        self.writeData = [None]
-        self.handle = ljm.openS("T7")
+        self.output_path = output_path
 
-        self.canbus = threading.Thread(target=self.readCAN)
-        self.run = threading.Thread(target=self.DAQRun)
-        self.can_read_lock = threading.Lock()
-        self.daq_run_lock = threading.Lock()
-        # self.daq_run_lock.acquire()
+        self.active_listeners = []
+        
+        self._closed = True
 
-        self.fr_names = ["AIN1_RESOLUTION_INDEX"]
-        self.fl_names = ["AIN2_RESOLUTION_INDEX"]
-        self.rr_names = ["AIN3_RESOLUTION_INDEX"]
-        self.rl_names = ["AIN4_RESOLUTION_INDEX"]
-        self.num_frames = len(self.fr_names)
-        self.aValues = [12]
-        ljm.eWriteNames(self.handle, self.num_frames, self.fr_names, self.aValues)
-        ljm.eWriteNames(self.handle, self.num_frames, self.fl_names, self.aValues)
-        ljm.eWriteNames(self.handle, self.num_frames, self.rr_names, self.aValues)
-        ljm.eWriteNames(self.handle, self.num_frames, self.rl_names, self.aValues)
+        self.base_listeners= [EngineControlUnitListener, AccelerometerListener, LinpotListener]
+        self.listeners: List["Listener"] = []
+        
+        self.handle = None
+        self.run_lock = threading.Lock()
 
         self.run_count = 0
 
     def setSMState(self, nextState: DAQState) -> None:
         self.currentState = nextState
 
-    def readLJ(self):
-        return ljm.eReadName(self.handle, "AIN0")
+    def get_config(self) -> dict:
+        return self._config
+    
+    def start(self):
+        self.active_listeners: List[str] = self.get_config().get("listeners")
+        self.handle = ljm.openS(self.config_manager.get_config("LJM").get("handle_device_type"))
+        for base_listener in self.base_listeners:
+            if base_listener.get_name() in self.active_listeners:
+                self.listeners.append(base_listener(self.config_manager))
+                
+        for listener in self.listeners:
+            listener.open()
 
-    def start_threads(self):
-        self.canbus.start()
-        self.run.start()
+        self.run()
 
-    def readCAN(self):
+    def stop(self):
+        if not self._closed:
+            for listener in self.listeners:
+                listener.stop()
+            self._closed = True
 
-        while True:
-            if self.currentState == DAQState.SAVING:
-                continue
-            with can.Bus() as bus:
-                self.daq_run_lock.acquire()
-                msg = bus.recv()
-
-                index = canMessageSort.get(msg.arbitration_id)
-                self.ECUData[index] = msg.data
-                self.daq_run_lock.release()
-
-    def resolveError(self) -> bool:
-        try:
-            return True
-        except ljm.LJMError:
-            return False
-
-    def write_zero_row(self) -> None:
-        for col in self.ecu_columns:
-            self.ecu_df.loc[self.ecu_df.index, col] = 0
-
-    def DAQRun(self) -> None:
-
-        nextTime = time.time()
+    def run(self) -> None:
         index = 0
         while True:
+            with self.run_lock:
+                button_clicked = read_state.read_button_state(self.handle)
 
-            self.can_read_lock.acquire()
-            button_clicked = read_state.read_button_state(self.handle)
-            # print(button_clicked)
+                if button_clicked:
+                    if self.currentState == DAQState.INIT:
+                        self._log.info("[DAQ] collecting")
+                        self.setSMState(DAQState.COLLECTING)
+                    elif self.currentState == DAQState.SAVING:
+                        self._log.info("[DAQ] collecting")
+                        self.setSMState(DAQState.COLLECTING)
+                else:
+                    if self.currentState == DAQState.COLLECTING:
+                        self._log.info("[DAQ] saving")
 
-            if time.time() < nextTime:
-                time.sleep(0)
+                        for listener in self.listeners:
+                            listener.save(self.output_path, self.run_count)
 
-            else:
-                nextTime = time.time()
-
-            if button_clicked:
-                if self.currentState == DAQState.INIT:
-                    print("collecting")
-                    self.setSMState(DAQState.COLLECTING)
-                elif self.currentState == DAQState.SAVING:
-                    print("collecting")
-                    self.setSMState(DAQState.COLLECTING)
-
-                if self.currentState == DAQState.COLLECTING:
-
-                    try:
-                        read_xl.read_xl_input(self.handle)
-                        # print(ljm.eReadName(
-                        #     self.handle, "AIN1"))
-                        current_time = time.time()
-                        self.linpot_df.loc[index, "Time"] = current_time
-                        self.linpot_df.loc[index, "Front Right"] = ljm.eReadName(
-                            self.handle, "AIN1")
-                        self.linpot_df.loc[index, "Front Left"] = ljm.eReadName(
-                            self.handle, "AIN2")
-                        self.linpot_df.loc[index, "Rear Right"] = ljm.eReadName(
-                            self.handle, "AIN3")
-                        self.linpot_df.loc[index, "Rear Left"] = ljm.eReadName(
-                            self.handle, "AIN4")
-                        index += 1
-                        read_xl_analog.read_xl(self.handle)
-                        # print(self.readLJ())
-                        print(self.linpot_df.tail(1))
-                        # self.writeData.append(current_time)
-                        # self.writeData.extend(self.ECUData)
-                        # self.writer.write(self.writeData)
-                        # self.writeData.clear()
-                        self.linpot_df.to_csv()
-                    except ljm.LJMError:
-                        self.currentState == DAQState.ERROR
-
-                        if self.resolveError():
-                            break
-
-                        print("LabJack Efrrfffor", ljm.LJMError)
-                        # self.write_zero_row()
-
-            else:
-                if self.currentState == DAQState.COLLECTING:
-                    print("saving")
-                    
-                    now = datetime.strftime(datetime.now(), "%Y-%m-%d_%H-%M-%S")
-                    self.linpot_df.to_csv(
-                        f"{self.output_file}_linpot_{now}.csv", index=False)
-                    
-                    # clear linpot_df
-                    self.linpot_df = pd.DataFrame(columns=self.linpot_df.columns)
-                    
-                    self.setSMState(DAQState.SAVING)
-                    self.run_count += 1
-
-            self.can_read_lock.release()
+                        self.setSMState(DAQState.SAVING)
+                        self.run_count += 1
 
     def __del__(self):
-
-        os.system('sudo ifconfig can0 down')
+        if not self._closed:
+            self.stop()
 
 
 if __name__ == "__main__":
-
     DAQ = DAQObject("data/output2")
     DAQ.start_threads()
 

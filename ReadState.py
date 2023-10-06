@@ -1,6 +1,6 @@
 import time
 from labjack import ljm
-from DAQState import DAQState
+from abc.Enums import DAQState
 
 
 '''
@@ -11,13 +11,14 @@ and false when it is not pressed. when pressed in Collecting State else in the E
 
 
 class read_state:
-
-    def check_button_state(result: float) -> bool:
+    @staticmethod
+    def check_button_state(self, result: float) -> bool:
         if result > 4:
             return True
         else:
             return False
 
+    @staticmethod
     def read_button_state(handle) -> bool:
         name = "AIN0"
         result = ljm.eReadName(handle, name)
@@ -25,6 +26,7 @@ class read_state:
         button_pressed = read_state.check_button_state(result)
         return button_pressed
 
+    @staticmethod
     def close_read(self):
         self.currentState = DAQState.SAVING
         ljm.close(self.handle)
