@@ -1,0 +1,37 @@
+class config():
+
+  @staticmethod
+  def export_config() -> dict:
+
+    return {
+          "DAQ": 
+          {
+              "listeners": [
+                  "ECU"
+              ]
+          },
+          "ECU": 
+          {
+              "channel": "can0",
+              "interface": "socketcan",
+              "csv_file": "ecudata.csv"
+          },
+          "LJM": 
+          {
+              "handle_device_type": "T7"
+          },
+          "Linpot": 
+          {
+              "output_file": "linpotdata.csv",
+              "AIN": {
+                  "Front Right": "AIN1",
+                  "Front Left": "AIN2",
+                  "Rear Right": "AIN3",
+                  "Rear Left": "AIN4"
+              }
+          },
+          "Button":
+          {
+            "name": "AIN0"
+          }
+    }

@@ -10,17 +10,18 @@ import csv
 import threading
 from labjack import ljm
 import pandas as pd
+from config import config
 
 
 can.rc['interface'] = 'socketcan'
 os.system('sudo ip link set can0 type can bitrate 250000')
 os.system('sudo ifconfig can0 up')
 can0 = can.interface.Bus(channel="can0", interface="socketcan")
-
+config = config.export_config()
 
 class DAQObject:
 
-    def __init__(self, output_file: str):
+    def __init__(self, output_file: str, config: dict):
 
         self.currentState = DAQState.INIT
         self.output_file = output_file
