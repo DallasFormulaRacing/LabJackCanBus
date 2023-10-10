@@ -4,12 +4,6 @@ class config():
   def export_config() -> dict:
 
     return {
-          "DAQ": 
-          {
-              "listeners": [
-                  "ECU"
-              ]
-          },
           "ECU": 
           {
               "channel": "can0",
