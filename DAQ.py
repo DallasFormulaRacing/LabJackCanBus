@@ -1,22 +1,13 @@
-import os
-import can
 import time
 from DAQState import DAQState
-from messageIDs import canMessageSort, can_messages_cols
 from ReadState import read_state
+from read_can import read_can
 from read_xl_analog import read_xl_analog
 from read_xl import read_xl
-import csv
 import threading
 from labjack import ljm
 import pandas as pd
 from datetime import datetime
-
-can.rc['interface'] = 'socketcan'
-os.system('sudo ip link set can0 type can bitrate 250000')
-os.system('sudo ifconfig can0 up')
-can0 = can.interface.Bus(channel="can0", interface="socketcan")
-
 
 class DAQObject:
 
@@ -24,18 +15,13 @@ class DAQObject:
 
         self.currentState = DAQState.INIT
         self.output_file = output_file
-        self.file = open("ecudata.csv", mode='w')
-        self.writer = can.CSVWriter(self.file, append=True)
-        self.ecu_columns = can_messages_cols
-        self.ecu_df = pd.DataFrame(columns=self.ecu_columns)
         self.linpot_df = pd.DataFrame(
             columns=["Time", "Front Right", "Front Left", "Rear Right", "Rear Left"])
-        self.ECUData = [None] * 16
         self.LJData = []
         self.writeData = [None]
         self.handle = ljm.openS("T7")
 
-        self.canbus = threading.Thread(target=self.readCAN)
+        self.canbus = read_can(channel="can0", interface="socketcan")
         self.run = threading.Thread(target=self.DAQRun)
         self.can_read_lock = threading.Lock()
         self.daq_run_lock = threading.Lock()
@@ -64,28 +50,11 @@ class DAQObject:
         self.canbus.start()
         self.run.start()
 
-    def readCAN(self):
-
-        while True:
-            if self.currentState == DAQState.SAVING:
-                continue
-            with can.Bus() as bus:
-                self.daq_run_lock.acquire()
-                msg = bus.recv()
-
-                index = canMessageSort.get(msg.arbitration_id)
-                self.ECUData[index] = msg.data
-                self.daq_run_lock.release()
-
     def resolveError(self) -> bool:
         try:
             return True
         except ljm.LJMError:
             return False
-
-    def write_zero_row(self) -> None:
-        for col in self.ecu_columns:
-            self.ecu_df.loc[self.ecu_df.index, col] = 0
 
     def DAQRun(self) -> None:
 
@@ -131,10 +100,7 @@ class DAQObject:
                         read_xl_analog.read_xl(self.handle)
                         # print(self.readLJ())
                         print(self.linpot_df.tail(1))
-                        # self.writeData.append(current_time)
-                        # self.writeData.extend(self.ECUData)
-                        # self.writer.write(self.writeData)
-                        # self.writeData.clear()
+                        
                         self.linpot_df.to_csv()
                     except ljm.LJMError:
                         self.currentState == DAQState.ERROR
@@ -156,14 +122,15 @@ class DAQObject:
                     # clear linpot_df
                     self.linpot_df = pd.DataFrame(columns=self.linpot_df.columns)
                     
+                    self.canbus.flush_buffer(file=f"{self.output_file}_ecu_{now}.csv")
                     self.setSMState(DAQState.SAVING)
                     self.run_count += 1
 
             self.can_read_lock.release()
 
     def __del__(self):
-
-        os.system('sudo ifconfig can0 down')
+        if getattr(self, "canbus", None):
+            self.canbus.stop()
 
 
 if __name__ == "__main__":
