@@ -1,5 +1,6 @@
 from labjack import ljm
 import csv
+import time
 
 class xl_testing:
 
@@ -24,6 +25,7 @@ class xl_testing:
 
         self.csv_writer1.writerow([result_x, result_y, result_z])
 
+        print("First Sensor: ")
         print(f"\n{x_axis} reading : {result_x} V \n{y_axis} reading : {result_y} V \n{z_axis} reading : {result_z} V")
 
     def read_xl_two(self) -> None:
@@ -37,6 +39,7 @@ class xl_testing:
 
         self.csv_writer2.writerow([result_x, result_y, result_z])
 
+        print("Second Sensor: ")
         print(f"\n{x_axis} reading : {result_x} V \n{y_axis} reading : {result_y} V \n{z_axis} reading : {result_z} V")
 
     def close_files(self):
@@ -48,9 +51,10 @@ def main():
     count = 0
 
     try:
-        while count < 100:
+        while count < 1000:
           tester.read_xl_one()
           tester.read_xl_two()
+         # time.sleep(1)
           count += 1
     finally:
         tester.close_files()
