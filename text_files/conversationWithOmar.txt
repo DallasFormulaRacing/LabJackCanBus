@@ -1,0 +1,33 @@
+- Overview of what we're trying to do with the data-analysis libraries
+    - Allow for each subteam to analyze and interpret their own data
+    - Current repo is just for learning and messing around with
+
+- Current tools for analyzing the data
+    - pandas, plotly, numpy, scipy
+
+- Overview of each data analysis library
+    - powertrain
+    - suspension/steering
+    - aerodynamics
+
+- What challenges are we having
+    - filtering data, currently for the lin pots we have a low pass filter which we implemented using the scipy library and a butterworth filter
+    but we're unsure whether or not this is the best way to do it as we specify the points at which it cuts or smoothes over the data
+    - any physcial limitations that we're having ? such as noise filtering it out
+
+- Accelerometer
+measuring, filtering, and interpreting the data
+    - how to interpret the data
+      - a small vibrator to calibrate the accelerometer
+      - x, y, z axis calibration, read the instructions on the accelerometer
+      - create the constant or the function to convert into m/s^2
+      - keep the input volatge clean for the initial test
+      - read the documentation on the accelerometer to see what it needs
+    - how to filter the data
+    - how to measure the data
+
+- Lin pot
+  - test each one specifically off the car to find the constant for conversion, see if its accurate
+  - fix the power source, make sure its a steady stream of 3.3 going to the lin pot, look at the singal coming out, using an oscilloscope
+  - what does nate plan on doing about this ?
+  - measure vibration results 

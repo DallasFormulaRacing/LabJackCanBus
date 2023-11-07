@@ -14,7 +14,7 @@ class config():
           {
               "handle_device_type": "T7"
           },
-          "Linpot": 
+          "linpot": 
           {
               "output_file": "linpotdata.csv",
               "AIN": {
@@ -24,8 +24,32 @@ class config():
                   "Rear Left": "AIN4"
               }
           },
-          "Button":
+          "button":
           {
             "name": "AIN0"
+          },
+          "accelerometer_front":
+          {
+              "front": {
+                "x": "AIN13",
+                "y": "AIN12",
+                "z": "AIN11"
+              },
+          },
+          "accelerometer_middle":
+          {
+              "middle": {
+                "x": "AIN10",
+                "y": "AIN9",
+                "z": "AIN8"
+              },
+          },
+          "accelerometer_back":
+          {
+              "back": {
+                "x": "AIN7",
+                "y": "AIN6",
+                "z": "AIN5"
+              },
           }
     }
