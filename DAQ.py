@@ -11,10 +11,10 @@ from labjack import ljm
 import pandas as pd
 from datetime import datetime
 
-can.rc['interface'] = 'socketcan'
-os.system('sudo ip link set can0 type can bitrate 250000')
-os.system('sudo ifconfig can0 up')
-can0 = can.interface.Bus(channel="can0", interface="socketcan")
+# can.rc['interface'] = 'socketcan'
+# os.system('sudo ip link set can0 type can bitrate 250000')
+# os.system('sudo ifconfig can0 up')
+# can0 = can.interface.Bus(channel="can0", interface="socketcan")
 
 
 class DAQObject:
@@ -34,7 +34,7 @@ class DAQObject:
         self.writeData = [None]
         self.handle = ljm.openS("T7")
 
-        self.canbus = threading.Thread(target=self.readCAN)
+        # self.canbus = threading.Thread(target=self.readCAN)
         self.run = threading.Thread(target=self.DAQRun)
         # self.read_xl = threading.Thread(target=self.read_xl)
         self.can_read_lock = threading.Lock()
