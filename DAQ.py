@@ -121,7 +121,7 @@ class DAQObject:
                 if self.currentState == DAQState.COLLECTING:
 
                     try:
-                        self.read_xl_analog.read_xl_one(self.handle, index)
+                        self.read_xl_analog_instance.read_xl_one(self.handle, index)
                         # read_xl_analog.read_xl_two(self.handle, index)
                         current_time = time.time()
                         self.linpot_df.loc[index, "Time"] = current_time
