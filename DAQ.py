@@ -5,7 +5,6 @@ from DAQState import DAQState
 from messageIDs import canMessageSort, can_messages_cols
 from ReadState import read_state
 from read_xl_analog import read_xl_analog
-from read_xl import read_xl
 import csv
 import threading
 from labjack import ljm
@@ -37,8 +36,10 @@ class DAQObject:
 
         self.canbus = threading.Thread(target=self.readCAN)
         self.run = threading.Thread(target=self.DAQRun)
+        # self.read_xl = threading.Thread(target=self.read_xl)
         self.can_read_lock = threading.Lock()
         self.daq_run_lock = threading.Lock()
+        # self.xl_read_lock = threading.Lock()
         # self.daq_run_lock.acquire()
 
         self.fr_names = ["AIN1_RESOLUTION_INDEX"]
@@ -61,7 +62,7 @@ class DAQObject:
         return ljm.eReadName(self.handle, "AIN0")
 
     def start_threads(self):
-        self.canbus.start()
+        # self.canbus.start()
         self.run.start()
 
     def readCAN(self):
@@ -76,16 +77,22 @@ class DAQObject:
                 index = canMessageSort.get(msg.arbitration_id)
                 self.ECUData[index] = msg.data
                 self.daq_run_lock.release()
+    
+    # def read_xl(self):
+
+    #     while True:
+    #         if self.currentState == DAQState.SAVING:
+    #             continue
+    #         self.daq_run_lock.acquire()
+    #         read_xl_analog.read_xl_one(self.handle)
+    #         read_xl_analog.read_xl_two(self.handle)
+    #         self.daq_run_lock.release()
 
     def resolveError(self) -> bool:
         try:
             return True
         except ljm.LJMError:
             return False
-
-    def write_zero_row(self) -> None:
-        for col in self.ecu_columns:
-            self.ecu_df.loc[self.ecu_df.index, col] = 0
 
     def DAQRun(self) -> None:
 
@@ -95,7 +102,6 @@ class DAQObject:
 
             self.can_read_lock.acquire()
             button_clicked = read_state.read_button_state(self.handle)
-            # print(button_clicked)
 
             if time.time() < nextTime:
                 time.sleep(0)
@@ -114,9 +120,8 @@ class DAQObject:
                 if self.currentState == DAQState.COLLECTING:
 
                     try:
-                        read_xl.read_xl_input(self.handle)
-                        # print(ljm.eReadName(
-                        #     self.handle, "AIN1"))
+                        read_xl_analog.read_xl_one(self.handle, index)
+                        read_xl_analog.read_xl_two(self.handle, index)
                         current_time = time.time()
                         self.linpot_df.loc[index, "Time"] = current_time
                         self.linpot_df.loc[index, "Front Right"] = ljm.eReadName(
@@ -128,13 +133,7 @@ class DAQObject:
                         self.linpot_df.loc[index, "Rear Left"] = ljm.eReadName(
                             self.handle, "AIN4")
                         index += 1
-                        read_xl_analog.read_xl(self.handle)
-                        # print(self.readLJ())
                         print(self.linpot_df.tail(1))
-                        # self.writeData.append(current_time)
-                        # self.writeData.extend(self.ECUData)
-                        # self.writer.write(self.writeData)
-                        # self.writeData.clear()
                         self.linpot_df.to_csv()
                     except ljm.LJMError:
                         self.currentState == DAQState.ERROR
@@ -143,7 +142,6 @@ class DAQObject:
                             break
 
                         print("LabJack Efrrfffor", ljm.LJMError)
-                        # self.write_zero_row()
 
             else:
                 if self.currentState == DAQState.COLLECTING:
@@ -155,6 +153,10 @@ class DAQObject:
                     
                     # clear linpot_df
                     self.linpot_df = pd.DataFrame(columns=self.linpot_df.columns)
+
+                    # saving xl file data
+                    read_xl_analog.save_xl_files()
+                    read_xl_analog.clear_xl_files()
                     
                     self.setSMState(DAQState.SAVING)
                     self.run_count += 1
