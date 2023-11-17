@@ -11,10 +11,10 @@ from labjack import ljm
 import pandas as pd
 from datetime import datetime
 
-can.rc['interface'] = 'socketcan'
-os.system('sudo ip link set can0 type can bitrate 250000')
-os.system('sudo ifconfig can0 up')
-can0 = can.interface.Bus(channel="can0", interface="socketcan")
+# can.rc['interface'] = 'socketcan'
+# os.system('sudo ip link set can0 type can bitrate 250000')
+# os.system('sudo ifconfig can0 up')
+# can0 = can.interface.Bus(channel="can0", interface="socketcan")
 
 
 class DAQObject:
@@ -41,6 +41,7 @@ class DAQObject:
         self.daq_run_lock = threading.Lock()
         # self.xl_read_lock = threading.Lock()
         # self.daq_run_lock.acquire()
+        self.read_xl_analog_instance = read_xl_analog()
 
         self.fr_names = ["AIN1_RESOLUTION_INDEX"]
         self.fl_names = ["AIN2_RESOLUTION_INDEX"]
@@ -120,8 +121,8 @@ class DAQObject:
                 if self.currentState == DAQState.COLLECTING:
 
                     try:
-                        read_xl_analog.read_xl_one(self.handle, index)
-                        read_xl_analog.read_xl_two(self.handle, index)
+                        self.read_xl_analog.read_xl_one(self.handle, index)
+                        # read_xl_analog.read_xl_two(self.handle, index)
                         current_time = time.time()
                         self.linpot_df.loc[index, "Time"] = current_time
                         self.linpot_df.loc[index, "Front Right"] = ljm.eReadName(
@@ -155,8 +156,8 @@ class DAQObject:
                     self.linpot_df = pd.DataFrame(columns=self.linpot_df.columns)
 
                     # saving xl file data
-                    read_xl_analog.save_xl_files()
-                    read_xl_analog.clear_xl_files()
+                    self.read_xl_analog_instance.save_xl_files()
+                    self.read_xl_analog_instance.clear_xl_files()
                     
                     self.setSMState(DAQState.SAVING)
                     self.run_count += 1
