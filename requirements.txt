@@ -1,0 +1,3 @@
+pandas
+labjack-ljm
+python-can
