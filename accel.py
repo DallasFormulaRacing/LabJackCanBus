@@ -4,9 +4,7 @@ accelerometer I2C communications
 based on the sht3x.py example in the labjack documentation
 
 TODO: 
-*Adapt numbers to fit accelerometer data sheet
 *Read data from accelerometer
-*Adapt into streams (after reading using standalone file)
 """
 
 from labjack import ljm
