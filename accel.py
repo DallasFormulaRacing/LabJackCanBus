@@ -4,10 +4,12 @@ accelerometer I2C communications
 based on the sht3x.py example in the labjack documentation
 
 TODO: 
-*Read data from accelerometer
+*integrate into DAQ class
+*Look into more readable implementation using the I2C library from labjack
 """
 
 from labjack import ljm
+from labjack import I2C
 
 handle = ljm.openS("ANY","ANY","ANY")
 
@@ -36,3 +38,31 @@ ljm.eWriteName(handle, "I2C_DATA_TX", 0xD5) #send address of the slave (1101010b
 
 ljm.eWriteName(handle, "I2C_GO", 1) #send data and begin 
 
+ljm.eWriteName(handle, "I2C_NUM_BYTES_TX", 0)
+ljm.eWriteName(handle, "I2C_NUM_BYTES_RX", 1)
+
+ljm.eWriteName(handle, "I2C_GO", 1) #Read Slave Aknowledgement (SAK)
+
+SAK = ljm.eReadNameByteArray(handle, "I2C_DATA_RX", 1)
+
+print(SAK)
+
+ljm.eWriteName(handle, "I2C_NUM_BYTES_TX", 1)
+ljm.eWriteName(handle, "I2C_NUM_BYTES_RX", 0)
+
+ljm.eWriteName(handle,"I2C_DATA_TX", 0x2) #0x2 = 0000010b, default settings of the subadress (SUB)
+
+ljm.eWriteName(handle, "I2C_GO", 1) #sensor is ready to send DATA
+
+sleep(0.02) #wait for collected values
+
+ljm.eWriteName(handle, "I2C_DATA_TX", 0x20) #0x20 is the temperature register, testing purposes
+
+ljm.eWriteName(handle, "I2C_NUM_BYTES_TX", 1)
+ljm.eWriteName(handle, "I2C_NUM_BYTES_RX", 2) #all registers return 2 bytes of data
+
+ljm.eWriteName(handle, "I2C_GO", 1) # collect data
+
+tempData = ljm.eWriteNameByteArray(handle, "I2C_DATA_RX", 2)
+
+ljm.close(handle) #close communications when finished reading data
