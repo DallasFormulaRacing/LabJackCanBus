@@ -22,7 +22,7 @@ ljm.eWriteName(handle, "FIO2", 1) #using FIO2 as power, setting to high continou
 
 ljm.eWriteName(handle, "I2C_SPEED_THROTTLE", 65000)
 
-ljm.eWriteName(handle,"IWC_SLAVE_ADDRESS", 0x6B)
+ljm.eWriteName(handle,"IWC_SLAVE_ADDRESS", 0x19)
 
 #start signal
 ljm.eWriteName(handle, "FIO0", 1) #hold SCL HIGH
@@ -34,7 +34,7 @@ ljm.eWriteName(handle, "FIO1", 0) #HIGH to LOW on the SDA
 ljm.eWriteName(handle, "I2C_NUM_BYTES_TX", 1)
 ljm.eWriteName(handle, "I2C_NUM_BYTES_RX", 0)
 
-ljm.eWriteName(handle, "I2C_DATA_TX", 0xD5) #send address of the slave (1101010b or 0x6B) followed by 1 for a read transaction (11010101b or 0xD5)
+ljm.eWriteName(handle, "I2C_DATA_TX", 0x33) #send address of the slave (0011001b or 0x16) followed by 1 for a write command (0011001110b or 0x32)
 
 ljm.eWriteName(handle, "I2C_GO", 1) #send data and begin 
 
@@ -50,12 +50,14 @@ print(SAK)
 ljm.eWriteName(handle, "I2C_NUM_BYTES_TX", 1)
 ljm.eWriteName(handle, "I2C_NUM_BYTES_RX", 0)
 
-ljm.eWriteName(handle,"I2C_DATA_TX", 0x2) #0x2 = 0000010b, default settings of the subadress (SUB)
+#place holder hex address
+ljm.eWriteName(handle,"I2C_DATA_TX", 0x99) #SUB address format is 1 followed by the address of the register you want to read
 
 ljm.eWriteName(handle, "I2C_GO", 1) #sensor is ready to send DATA
 
 sleep(0.02) #wait for collected values
 
+#to continously read data from the sensor, send a Master acknowledge
 ljm.eWriteName(handle, "I2C_DATA_TX", 0x20) #0x20 is the temperature register, testing purposes
 
 ljm.eWriteName(handle, "I2C_NUM_BYTES_TX", 1)
