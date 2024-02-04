@@ -3,8 +3,8 @@ import can
 import time
 from DAQState import DAQState
 from messageIDs import canMessageSort, can_messages_cols
-from ReadState import read_state
-from read_xl_analog import read_xl_analog
+from button_state.ReadState import read_state
+from read_accel.read_xl_analog import read_xl_analog
 import csv
 import threading
 from labjack import ljm
@@ -24,7 +24,7 @@ class DAQObject:
         self.currentState = DAQState.INIT
         self.output_file = output_file
         self.file = open("ecudata.csv", mode='w')
-        self.writer = can.CSVWriter(self.file, append=True)
+        # self.writer = can.CSVWriter(self.file, append=True)
         self.ecu_columns = can_messages_cols
         self.ecu_df = pd.DataFrame(columns=self.ecu_columns)
         self.linpot_df = pd.DataFrame(
@@ -78,7 +78,7 @@ class DAQObject:
                 index = canMessageSort.get(msg.arbitration_id)
                 self.ECUData[index] = msg.data
                 self.daq_run_lock.release()
-    
+
     # def read_xl(self):
 
     #     while True:
@@ -147,18 +147,18 @@ class DAQObject:
             else:
                 if self.currentState == DAQState.COLLECTING:
                     print("saving")
-                    
+
                     now = datetime.strftime(datetime.now(), "%Y-%m-%d_%H-%M-%S")
                     self.linpot_df.to_csv(
                         f"{self.output_file}_linpot_{now}.csv", index=False)
-                    
+
                     # clear linpot_df
                     self.linpot_df = pd.DataFrame(columns=self.linpot_df.columns)
 
                     # saving xl file data
                     self.read_xl_analog_instance.save_xl_files()
                     self.read_xl_analog_instance.clear_xl_files()
-                    
+
                     self.setSMState(DAQState.SAVING)
                     self.run_count += 1
 
