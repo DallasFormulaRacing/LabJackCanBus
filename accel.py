@@ -12,7 +12,10 @@ import time
 address = 0x19
 register = 0x28
 
-with SMBus(1) as bus: 
-    while True:
-        msg = bus.read_i2c_block_data(address,register,6)
-        print(msg)
+bus = smbus.SMbus(1);
+
+Register = bus.read_i2c_block_data(address, register, 6)
+
+acc_x = Register[0]
+acc_y = Register[1]
+acc_z = Register[2]
