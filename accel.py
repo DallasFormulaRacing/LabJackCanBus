@@ -19,3 +19,5 @@ Register = bus.read_i2c_block_data(address, register, 6)
 acc_x = Register[0]
 acc_y = Register[1]
 acc_z = Register[2]
+
+print(f"x: {acc_x} y: {acc_y} z: {acc_z}")
