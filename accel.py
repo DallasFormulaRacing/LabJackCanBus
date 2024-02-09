@@ -1,11 +1,10 @@
 """
 accelerometer I2C communications via raspberry PI
 
-based on the sht3x.py example in the labjack documentation
-
 TODO: 
 *integrate into DAQ class
 *write data to CSV
+*processes raw data
 """
 from smbus2 import SMBus, i2c_msg
 import time
