@@ -84,12 +84,12 @@ class Main(Thread):
     def save(self, input_csv: str):
         self.df.to_csv(input_csv, index=False)
 
+if __name__ == "__main__":
+    sensor = Main()
 
-sensor = Main()
+    try:
+        sensor._run()
+    except KeyboardInterrupt:
+        pass
 
-try:
-    sensor._run()
-except KeyboardInterrupt:
-    pass
-
-sensor.save("accel.csv")
+    sensor.save("accel.csv")
