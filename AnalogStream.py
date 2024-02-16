@@ -86,12 +86,9 @@ class Linpot(Extension):
 
 
 class Stream:
-    def __init__(self, extensions: List[Extension]):
+    def __init__(self, handle, extensions: List[Extension]):
         # stats
-        self.handle = ljm.openS(
-            "T7", "ANY", "ANY"
-        )  # T7 device, Any connection, Any identifier
-
+        self.handle = handle  # T7 device, Any connection, Any identifier
         self.scanRate = 100  # sets scanning rate (samples per second)
         self.scansPerRead = int(
             self.scanRate / 2
@@ -255,22 +252,6 @@ class Stream:
             ljm.setStreamCallback(self.handle, self.process_buffer_callback)
 
             self.logger.info("Stream running and callback set.")
-            self.logger.info("Waiting for Ctrl+C...")
-
-            try:
-                while not self.done:
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                self.stop()
-            finally:
-                self.save(fp="test-{}.csv")
-
-            t1 = datetime.now()
-
-            self.logger.info(
-                "Streaming done. %.3f milliseconds have elapsed since eStreamStart",
-                ((t1 - t0).seconds * 1000 + float((t1 - t0).microseconds) / 1000),
-            )
         except ljm.LJMError:
             ljme = sys.exc_info()[1]
             self.logger.error(ljme)
@@ -295,11 +276,14 @@ class Stream:
         for extension in self.extensions:
             extension.save(fp)
 
-    def __del__(self):
-        ljm.close(self.handle)
-
-
 if __name__ == "__main__":
     analog_stream = Stream(extensions=[Linpot()])
 
     analog_stream.start()
+    try:
+        while not analog_stream.done:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        analog_stream.stop()
+    finally:
+        analog_stream.save(fp="test-{}.csv")

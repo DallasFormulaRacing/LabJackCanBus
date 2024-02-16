@@ -13,15 +13,15 @@ and false when it is not pressed. when pressed in Collecting State else in the E
 class read_state:
 
     def check_button_state(result: float) -> bool:
-        if result > 4:
+        if result >= 1:
             return True
         else:
             return False
 
     def read_button_state(handle) -> bool:
-        name = "AIN0"
+        name = "FIO4"
         result = ljm.eReadName(handle, name)
-        # print(f"\n{name} reading : {result} V")
+        #  print(f"\n{name} reading : {result} V", flush=True)
         button_pressed = read_state.check_button_state(result)
         return button_pressed
 
