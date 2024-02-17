@@ -45,9 +45,11 @@ class Gyro(Extension):
 
     def poll(self) -> pd.DataFrame:
         ang_x, ang_y, ang_z = self.gyroscope.gyro
+        time = time.time()
 
         return pd.DataFrame(
             data={
+                "t": time,
                 "angular x": [ang_x],
                 "angular y": [ang_y],
                 "angular z": [ang_z]
@@ -68,27 +70,23 @@ class Main(Thread):
         gyro = Gyro()
         xl = Accelerometer()
 
-        self.df = pd.DataFrame()
-        self.combined = pd.DataFrame()
+        self.accel_df = pd.DataFrame()
+        self.gyro_df = pd.DataFrame()
 
         # loop
         while not self._stop.is_set():
-
             gyro_data = gyro.poll()
             xl_data = xl.poll()
-
-            self.df = pd.concat(
-                [self.df, xl_data, gyro_data], ignore_index=True)
+            self.accel_df = pd.concat([self.accel_df, xl_data], ignore_index=True)
+            self.gyro_df = pd.concat([self.gyro_df, gyro_data], ignore_index=True)
 
     def stop(self):
         self._stop.set()
         self.join()
 
-    def save(self, input_csv: str):
-        for i in range(0, len(self.df) - 1, 2): # hacky solution for test day
-            row = self.df.iloc[i].fillna(self.df.iloc[i + 1])
-            self.combined = self.combined.append(row, ignore_index = True)
-        self.df.to_csv(input_csv, index=False)
+    def save(self, accel_csv: str, gyro_csv: str):
+        self.accel_df.to_csv(accel_csv, index=False)
+        self.gyro_df.to_csv(gyro_csv, index=False)
 
 if __name__ == "__main__":
     sensor = Main()
