@@ -21,9 +21,11 @@ class Accelerometer(Extension):
 
     def poll(self) -> pd.DataFrame:
         accel_x, accel_y, accel_z = self.accelerometer.acceleration
+        time = time.time()
 
         return pd.DataFrame(
             data={
+                "t": time,
                 "x": [accel_x],
                 "y": [accel_y],
                 "z": [accel_z]
@@ -62,11 +64,12 @@ class Main(Thread):
 
     def _run(self):
 
-        # intiialize
+        # intiialzize
         gyro = Gyro()
         xl = Accelerometer()
 
         self.df = pd.DataFrame()
+        self.combined = pd.DataFrame()
 
         # loop
         while not self._stop.is_set():
@@ -82,6 +85,9 @@ class Main(Thread):
         self.join()
 
     def save(self, input_csv: str):
+        for i in range(0, len(self.df) - 1, 2): # hacky solution for test day
+            row = self.df.iloc[i].fillna(self.df.iloc[i + 1])
+            self.combined = self.combined.append(row, ignore_index = True)
         self.df.to_csv(input_csv, index=False)
 
 if __name__ == "__main__":
