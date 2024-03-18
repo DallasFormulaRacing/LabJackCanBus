@@ -13,7 +13,7 @@ and false when it is not pressed. when pressed in Collecting State else in the E
 class read_state:
 
     def check_button_state(result: float) -> bool:
-        if result >= 1:
+        if result < 1:
             return True
         else:
             return False
