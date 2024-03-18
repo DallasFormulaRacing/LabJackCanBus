@@ -49,10 +49,14 @@ class DAQObject:
         self.rl_names = ["AIN4_RESOLUTION_INDEX"]
         self.num_frames = len(self.fr_names)
         self.aValues = [12]
-        ljm.eWriteNames(self.handle, self.num_frames, self.fr_names, self.aValues)
-        ljm.eWriteNames(self.handle, self.num_frames, self.fl_names, self.aValues)
-        ljm.eWriteNames(self.handle, self.num_frames, self.rr_names, self.aValues)
-        ljm.eWriteNames(self.handle, self.num_frames, self.rl_names, self.aValues)
+        ljm.eWriteNames(self.handle, self.num_frames,
+                        self.fr_names, self.aValues)
+        ljm.eWriteNames(self.handle, self.num_frames,
+                        self.fl_names, self.aValues)
+        ljm.eWriteNames(self.handle, self.num_frames,
+                        self.rr_names, self.aValues)
+        ljm.eWriteNames(self.handle, self.num_frames,
+                        self.rl_names, self.aValues)
 
         self.run_count = 0
 
@@ -121,7 +125,8 @@ class DAQObject:
                 if self.currentState == DAQState.COLLECTING:
 
                     try:
-                        self.read_xl_analog_instance.read_xl_one(self.handle, index)
+                        self.read_xl_analog_instance.read_xl_one(
+                            self.handle, index)
                         # read_xl_analog.read_xl_two(self.handle, index)
                         current_time = time.time()
                         self.linpot_df.loc[index, "Time"] = current_time
@@ -148,12 +153,14 @@ class DAQObject:
                 if self.currentState == DAQState.COLLECTING:
                     print("saving")
 
-                    now = datetime.strftime(datetime.now(), "%Y-%m-%d_%H-%M-%S")
+                    now = datetime.strftime(
+                        datetime.now(), "%Y-%m-%d_%H-%M-%S")
                     self.linpot_df.to_csv(
                         f"{self.output_file}_linpot_{now}.csv", index=False)
 
                     # clear linpot_df
-                    self.linpot_df = pd.DataFrame(columns=self.linpot_df.columns)
+                    self.linpot_df = pd.DataFrame(
+                        columns=self.linpot_df.columns)
 
                     # saving xl file data
                     self.read_xl_analog_instance.save_xl_files()
