@@ -1,8 +1,8 @@
 import time
-from AnalogStream import Linpot, Stream
-from GyroAndAccel import Read
-from ReadState import read_state
-from CanBus import ECU
+from sensors.AnalogStream import Linpot, Stream
+from sensors.GyroAndAccel import Read
+from button.ReadState import read_state
+from can.CanBus import ECU
 from DAQState import DAQState
 import json
 from labjack import ljm
