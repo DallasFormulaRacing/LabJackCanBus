@@ -3,6 +3,7 @@ CanBus Reader that writes to a provided file
 """
 import os
 import can
+from telegraf.client import TelegrafClient
 
 
 class ECU(object):

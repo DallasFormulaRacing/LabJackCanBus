@@ -10,6 +10,9 @@ from typing import List
 import numpy as np
 import pandas as pd
 from labjack import ljm
+from telegraf.client import TelegrafClient
+
+telegraf_client = TelegrafClient(host='localhost', port=8092)
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -68,10 +71,25 @@ class Linpot(Extension):
         ]
         ljm.eWriteNames(si.handle, len(frames), frames, [12] * len(frames))
 
+    def send_linpot_metrics(self, data: pd.DataFrame):
+
+        with self.lock:
+            for column_name in data.columns:
+
+                if column_name == "SYSTEM_TIMER_20HZ":
+                    continue
+
+                metric_name = "_".join(column_name.lower().split())
+                value = data[column_name].iloc[-1]
+                time = data["SYSTEM_TIMER_20HZ"].iloc[-1]
+                telegraf_client.metric(metric_name, value, tags={"source": "linpot"}, timestamp=time)
+
     def process(self, data: pd.DataFrame):
         data.rename(columns=self.aScanList, inplace=True)
+
         with self.lock:
             self.df = pd.concat([self.df, data], ignore_index=True)
+            self.send_linpot_metrics(data)
         print(self.df)
 
     def save(self, fp: str, *, index: bool = False) -> None:
