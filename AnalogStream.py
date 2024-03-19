@@ -151,7 +151,7 @@ class Stream:
 
             # Enabling internally-clocked stream.
             ljm.eWriteName(self.handle, "STREAM_RESOLUTION_INDEX", 2)
-        except:
+        except ljm.LJMError:
             pass
 
         for extension in extensions:
@@ -293,6 +293,7 @@ class Stream:
     def save(self, fp: str):
         for extension in self.extensions:
             extension.save(fp)
+
 
 if __name__ == "__main__":
     analog_stream = Stream(extensions=[Linpot()])

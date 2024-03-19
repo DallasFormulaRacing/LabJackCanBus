@@ -1,5 +1,6 @@
 import time
 from AnalogStream import Linpot, Stream
+from GyroAndAccel import Read
 from ReadState import read_state
 from CanBus import ECU
 from DAQState import DAQState
@@ -17,6 +18,8 @@ class DAQ(object):
         self.log = logging.getLogger("DAQ")
 
         self.analog_stream: Stream | None = None
+
+        self.read_accel_gyro = Read
 
         self.canbus: ECU | None = None
 
@@ -71,6 +74,9 @@ class DAQ(object):
             if self.canbus:
                 self.canbus.start(session_id=self.session_id)
 
+            if self.read_accel_gyro:
+                self.read_accel_gyro.process()
+
         elif new_state == DAQState.SAVING:
             if self.analog_stream:
                 self.analog_stream.stop()
@@ -78,12 +84,19 @@ class DAQ(object):
             if self.canbus:
                 self.canbus.stop()
 
+            if self.read_accel_gyro:
+                self.read_accel_gyro.stop()
+
             if self.analog_stream:
                 self.analog_stream.save(self.output_path + f"/analog-{{}}-{self.session_id}.csv")
                 self.analog_stream = Stream(self.handle, extensions=[Linpot()])
 
             if self.canbus:
                 self.canbus.save()
+
+            if self.read_accel_gyro:
+                self.read_accel_gyro.save(self.output_path + f"/accel-{self.session_id}.csv", self.output_path
+                                          + f"/gyro-{self.session_id}.csv")
 
         elif new_state == DAQState.INIT:
             self.analog_stream = Stream(handle=self.handle, extensions=[Linpot()])
@@ -118,7 +131,7 @@ class DAQ(object):
     def __del__(self):
         if self.handle:
             ljm.close(self.handle)
-            self.handle = None 
+            self.handle = None
 
 
 if __name__ == "__main__":
