@@ -19,9 +19,9 @@ class DAQ(object):
 
         self.analog_stream: Stream | None = None
 
-        self.read_accel_gyro = Read
+        # self.read_accel_gyro = Read
 
-        self.canbus: ECU | None = None
+        # self.canbus: ECU | None = None
 
         self.handle = ljm.openS(
             "T7", "ANY", "ANY"
@@ -71,36 +71,36 @@ class DAQ(object):
             if self.analog_stream:
                 self.analog_stream.start()
 
-            if self.canbus:
-                self.canbus.start(session_id=self.session_id)
+            # if self.canbus:
+            #     self.canbus.start(session_id=self.session_id)
 
-            if self.read_accel_gyro:
-                self.read_accel_gyro.process()
+            # if self.read_accel_gyro:
+            #     self.read_accel_gyro.process()
 
         elif new_state == DAQState.SAVING:
             if self.analog_stream:
                 self.analog_stream.stop()
 
-            if self.canbus:
-                self.canbus.stop()
+            # if self.canbus:
+            #     self.canbus.stop()
 
-            if self.read_accel_gyro:
-                self.read_accel_gyro.stop()
+            # if self.read_accel_gyro:
+            #     self.read_accel_gyro.stop()
 
             if self.analog_stream:
                 self.analog_stream.save(self.output_path + f"/analog-{{}}-{self.session_id}.csv")
                 self.analog_stream = Stream(self.handle, extensions=[Linpot()])
 
-            if self.canbus:
-                self.canbus.save()
+            # if self.canbus:
+            #     self.canbus.save()
 
-            if self.read_accel_gyro:
-                self.read_accel_gyro.save(self.output_path + f"/accel-{self.session_id}.csv", self.output_path
-                                          + f"/gyro-{self.session_id}.csv")
+            # if self.read_accel_gyro:
+            #     self.read_accel_gyro.save(self.output_path + f"/accel-{self.session_id}.csv", self.output_path
+            #                               + f"/gyro-{self.session_id}.csv")
 
         elif new_state == DAQState.INIT:
             self.analog_stream = Stream(handle=self.handle, extensions=[Linpot()])
-            self.canbus = ECU(output_path=self.output_path + f"/can-")
+            # self.canbus = ECU(output_path=self.output_path + f"/can-")
             # self.handle = self.analog_stream.handle
 
     def _run(self):
