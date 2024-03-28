@@ -1,0 +1,22 @@
+{
+  "linpot":{
+    "run1":{
+      "front_left":2.1,
+      "front_right":2.1,
+      "rear_left":2.1,
+      "rear_right":2.1
+    },
+    "run2":{
+      "front_left":2.1,
+      "front_right":2.1,
+      "rear_left":2.1,
+      "rear_right":2.1
+    },
+    "run3":{
+      "front_left":2.1,
+      "front_right":2.1,
+      "rear_left":2.1,
+      "rear_right":2.1
+    }
+  }
+}

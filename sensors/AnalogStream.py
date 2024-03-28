@@ -12,7 +12,6 @@ import pandas as pd
 from labjack import ljm
 from telegraf.client import TelegrafClient
 
-telegraf_client = TelegrafClient(host='localhost', port=8092)
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -55,10 +54,10 @@ class Linpot(Extension):
         }
 
         self.aScanListNames = list(self.aScanList.keys())
-
         self.lock = threading.Lock()
         print("CREATING PANDAS DATAFRAME")
         self.df = pd.DataFrame(columns=list(self.aScanList.values()) + [TIME_IDX])
+        self.telegraf_client = TelegrafClient(host="localhost", port=8092)
 
     def setup(self, si: "Stream"):
         si.aScanListNames.extend(self.aScanListNames)
@@ -82,7 +81,7 @@ class Linpot(Extension):
                 metric_name = "_".join(column_name.lower().split())
                 value = data[column_name].iloc[-1]
                 time = data["SYSTEM_TIMER_20HZ"].iloc[-1]
-                telegraf_client.metric(metric_name, value, tags={"source": "linpot"}, timestamp=time)
+                self.telegraf_client.metric(metric_name, value, tags={"source": "linpot"}, timestamp=time)
 
     def process(self, data: pd.DataFrame):
         data.rename(columns=self.aScanList, inplace=True)

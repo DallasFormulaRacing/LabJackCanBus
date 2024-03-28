@@ -4,3 +4,9 @@ __pycache__/messageIDs.cpython-39.pyc
 __pycache__/ReadState.cpython-39.pyc
 arjun*
 *.csv
+.venv
+/venv
+.models
+models.json
+settings.json
+.vscode

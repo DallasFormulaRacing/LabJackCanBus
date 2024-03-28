@@ -12,4 +12,4 @@ exclude =
 # E301 expected 1 blank line, found 0
 # E302 expected 2 blank lines, found 0
 # You can enforce 2 blank lines before a function definition
-extend-ignore = E301
+extend-ignore = E301, E111
