@@ -20,5 +20,6 @@ def test_send_linpot_metric(linpot_instance, mock_telegraf, linpot_data):
 
         mock_telegraf.reset_mock()
 
+
 def test_send_metric():
     pass
