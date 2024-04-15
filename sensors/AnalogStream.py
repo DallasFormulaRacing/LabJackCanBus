@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import sys
@@ -47,10 +48,10 @@ class Extension(object):
 class Linpot(Extension):
     def __init__(self):
         self.aScanList = {
-            "AIN1": "Front Left",
-            "AIN2": "Rear Left",
-            "AIN3": "Rear Right",
-            "AIN4": "Front Left",
+            "AIN1": "front_left",
+            "AIN2": "rear_left",
+            "AIN3": "rear_right",
+            "AIN4": "front_right",
         }
 
         self.aScanListNames = list(self.aScanList.keys())
@@ -58,8 +59,10 @@ class Linpot(Extension):
         print("CREATING PANDAS DATAFRAME")
         self.df = pd.DataFrame(columns=list(self.aScanList.values()) + [TIME_IDX])
         self.telegraf_client = TelegrafClient(host="localhost", port=8092)
-
+        self.stream = None 
+        
     def setup(self, si: "Stream"):
+        self.stream = si
         si.aScanListNames.extend(self.aScanListNames)
 
         frames = [
@@ -71,17 +74,13 @@ class Linpot(Extension):
         ljm.eWriteNames(si.handle, len(frames), frames, [12] * len(frames))
 
     def send_linpot_metrics(self, data: pd.DataFrame):
-
-        with self.lock:
-            for column_name in data.columns:
-
-                if column_name == "SYSTEM_TIMER_20HZ":
-                    continue
-
-                metric_name = "_".join(column_name.lower().split())
-                value = data[column_name].iloc[-1]
-                time = data["SYSTEM_TIMER_20HZ"].iloc[-1]
-                self.telegraf_client.metric(metric_name, value, tags={"source": "linpot"}, timestamp=time)
+        for index, row in data.iterrows():
+            timestamp = row[TIME_IDX] * 1e9 # conversion to nanoseconds
+        
+            data = row[list(self.aScanList.values())]
+            metric_fmt = lambda name : "_".join(name.split(" ")).lower()
+            data.rename(metric_fmt)
+            self.telegraf_client.metric("linpots", data.to_dict(), tags={"source": "linpot", "session_id": self.stream.session_id}, timestamp=str(int(timestamp)))
 
     def process(self, data: pd.DataFrame):
         data.rename(columns=self.aScanList, inplace=True)
@@ -89,7 +88,7 @@ class Linpot(Extension):
         with self.lock:
             self.df = pd.concat([self.df, data], ignore_index=True)
             self.send_linpot_metrics(data)
-        print(self.df)
+        # print(self.df)
 
     def save(self, fp: str, *, index: bool = False) -> None:
         fp = fp.format("linpot")
@@ -105,8 +104,10 @@ class Linpot(Extension):
 class Stream:
     def __init__(self, handle, extensions: List[Extension]):
         # stats
+        self.session_id = NotImplemented
+        
         self.handle = handle  # T7 device, Any connection, Any identifier
-        self.scanRate = 100  # sets scanning rate (samples per second)
+        self.scanRate = 20  # sets scanning rate (samples per second)
         self.scansPerRead = int(
             self.scanRate / 2
         )  # Initializes the number of scans per read
@@ -233,7 +234,14 @@ class Stream:
 
             # convert to a pandas dataset for ease of use (can be optimized out if wanted)
             df = pd.DataFrame(data_2d, columns=self.aScanListNames)
-
+            # print("AOIWDOIUAHW: ", df["SYSTEM_TIMER_20HZ"])
+            df["SYSTEM_TIMER_20HZ"] /= 20
+            
+            if not self.time_offset:
+                self.time_offset = time.time() - df["SYSTEM_TIMER_20HZ"][0]
+            df["SYSTEM_TIMER_20HZ"] += self.time_offset
+            
+            # print("offset: ", df.at[0, "SYSTEM_TIMER_20HZ"])
             for extension in self.extensions:
                 extension.process(
                     df[extension.aScanListNames + ["SYSTEM_TIMER_20HZ"]].copy()
@@ -249,6 +257,12 @@ class Stream:
                 self.logger.error(err)
 
     def start(self):
+        with open("./config.json", "r") as fp:
+            data = json.load(fp)
+        self.session_id = data.get("session_id", -1)
+        
+        # Time Sync 
+        self.time_offset = None
         try:
             t0 = datetime.now()
 
