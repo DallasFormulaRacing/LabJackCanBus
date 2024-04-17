@@ -77,7 +77,6 @@ class Read(Thread):
 
         self.accel_df = pd.DataFrame()
         self.gyro_df = pd.DataFrame()
-        self.telegraf_client = TelegrafClient(host="localhost", port=8092)
         self.session_id = self.retrieve_session_id()
         self.gyro = Gyro(self.session_id)
         self.accel = Accelerometer(self.session_id)
