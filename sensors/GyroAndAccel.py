@@ -82,14 +82,10 @@ class Read(Thread):
 
         # loop
         while not self._stop.is_set():
-
             gyro_data = gyro.poll()
             xl_data = xl.poll()
             pd.concat([self.accel_df, xl_data], ignore_index=True)
             pd.concat([self.gyro_df, gyro_data], ignore_index=True)
-
-            self.send_accel_metrics(xl_data)
-            self.send_gyro_metrics(gyro_data)
 
     def retrieve_session_id(self):
         with open("config.json", "r") as config_file:
@@ -126,6 +122,10 @@ class Read(Thread):
         self.join()
 
     def save(self, accel_fp: str, gyro_fp: str):
+
+        self.send_accel_metrics(self.accel_df)
+        self.send_gyro_metrics(self.gyro_df)
+
         self.accel_df.to_csv(accel_fp, index=False)
         self.gyro_df.to_csv(gyro_fp, index=False)
 
