@@ -97,9 +97,12 @@ class Read(Thread):
         with open("config.json", "r") as config_file:
             config = json.load(config_file)
             session_id = config["session_id"]
+            logging.info(f"Retrieved session id: {session_id}")
             return session_id
 
     def process(self):
+
+        logging.info("Processing data")
         # loop
         while not self._stop.is_set():
             gyro_data = self.gyro.poll()
@@ -108,10 +111,12 @@ class Read(Thread):
             self.gyro_df = pd.concat([self.gyro_df, gyro_data], ignore_index=True)
 
     def stop(self):
+        logging.info("Stopping data collection")
         self._stop.set()
         self.join()
 
     def save(self, accel_fp: str, gyro_fp: str):
+        logging.info(f"Saving data to {accel_fp} and {gyro_fp}")
         self.accel_df.to_csv(accel_fp, index=False)
         self.gyro_df.to_csv(gyro_fp, index=False)
 
