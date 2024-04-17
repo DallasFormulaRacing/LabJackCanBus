@@ -8,17 +8,18 @@ from threading import Thread
 from sensors.AnalogStream import Extension
 import pandas as pd
 import json
+import logging
+import traceback
 
 from telegraf.client import TelegrafClient
 
-telegraf_client = TelegrafClient(host="localhost", port=8092)
-
 
 class Accelerometer(Extension):
-    def __init__(self, session_id: int):
+    def __init__(self, session_id: float):
         self.session_id = session_id
         self.i2c = None
         self.accelerometer = None
+        self.telegraf_client = TelegrafClient(host="localhost", port=8092)
         self.setup()
 
     def setup(self):
@@ -29,23 +30,29 @@ class Accelerometer(Extension):
         accel_x, accel_y, accel_z = self.accelerometer.acceleration
         timestamp = time.time()
 
+        # changed from a list to variable, are we expecting multiple values?
         payload = {
             "t": timestamp,
-            "x": [accel_x],
-            "y": [accel_y],
-            "z": [accel_z]
+            "x": accel_x,
+            "y": accel_y,
+            "z": accel_z
         }
 
-        telegraf_client.metric("accel_values", payload, tags={"source": "accel", "session_id": self.session_id})
+        try:
+            logging.info(f"Attempting to send data to telegraf: {payload}")
+            self.telegraf_client.metric("accel_values", payload, tags={"source": "accel", "session_id": self.session_id})
 
-        return pd.DataFrame(data=payload)
+            return pd.DataFrame(data=payload)
+        except Exception as e:
+            logging.error(f"Error sending data to telegraf: {e}\n{traceback.format_exc()}")
 
 
 class Gyro(Extension):
-    def __init__(self, session_id: int):
+    def __init__(self, session_id: float):
         self.session_id = session_id
         self.i2c = None
         self.gyroscope = None
+        self.telegraf_client = TelegrafClient(host="localhost", port=8092)
         self.setup()
 
     def setup(self):
@@ -56,16 +63,21 @@ class Gyro(Extension):
         ang_x, ang_y, ang_z = self.gyroscope.gyro
         timestamp = time.time()
 
+        # changed from a list to variable, are we expecting multiple values?
         payload = {
             "t": timestamp,
-            "angular x": [ang_x],
-            "angular y": [ang_y],
-            "angular z": [ang_z]
+            "angular x": ang_x,
+            "angular y": ang_y,
+            "angular z": ang_z
         }
 
-        telegraf_client.metric("gyro_values", payload, tags={"source": "gyro", "session_id": self.session_id})
+        try:
+            logging.info(f"Attempting to send data to telegraf: {payload}")
+            self.telegraf_client.metric("gyro_values", payload, tags={"source": "gyro", "session_id": self.session_id})
 
-        return pd.DataFrame(data=payload)
+            return pd.DataFrame(data=payload)
+        except Exception as e:
+            logging.error(f"Error sending data to telegraf: {e}\n{traceback.format_exc()}")
 
 
 class Read(Thread):
@@ -92,8 +104,8 @@ class Read(Thread):
         while not self._stop.is_set():
             gyro_data = self.gyro.poll()
             xl_data = self.accel.poll()
-            pd.concat([self.accel_df, xl_data], ignore_index=True)
-            pd.concat([self.gyro_df, gyro_data], ignore_index=True)
+            self.accel_df = pd.concat([self.accel_df, xl_data], ignore_index=True)
+            self.gyro_df = pd.concat([self.gyro_df, gyro_data], ignore_index=True)
 
     def stop(self):
         self._stop.set()
