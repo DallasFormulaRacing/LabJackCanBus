@@ -60,7 +60,7 @@ class Linpot(Extension):
         self.df = pd.DataFrame(columns=list(self.aScanList.values()) + [TIME_IDX])
         self.telegraf_client = TelegrafClient(host="localhost", port=8092)
         self.stream = None 
-        
+
     def setup(self, si: "Stream"):
         self.stream = si
         si.aScanListNames.extend(self.aScanListNames)
@@ -74,13 +74,16 @@ class Linpot(Extension):
         ljm.eWriteNames(si.handle, len(frames), frames, [12] * len(frames))
 
     def send_linpot_metrics(self, data: pd.DataFrame):
-        for index, row in data.iterrows():
-            timestamp = row[TIME_IDX] * 1e9 # conversion to nanoseconds
-        
-            data = row[list(self.aScanList.values())]
-            metric_fmt = lambda name : "_".join(name.split(" ")).lower()
-            data.rename(metric_fmt)
-            self.telegraf_client.metric("linpots", data.to_dict(), tags={"source": "linpot", "session_id": self.stream.session_id}, timestamp=str(int(timestamp)))
+        try:
+            for index, row in data.iterrows():
+                timestamp = row[TIME_IDX] * 1e9 # conversion to nanoseconds
+
+                data = row[list(self.aScanList.values())]
+                metric_fmt = lambda name : "_".join(name.split(" ")).lower()
+                data.rename(metric_fmt)
+                self.telegraf_client.metric("linpots", data.to_dict(), tags={"source": "linpot", "session_id": self.stream.session_id}, timestamp=str(int(timestamp)))
+        except Exception as e:
+            logging.error(f"Error sending data to telegraf: {e}\n{traceback.format_exc()}")
 
     def process(self, data: pd.DataFrame):
         data.rename(columns=self.aScanList, inplace=True)
@@ -105,7 +108,7 @@ class Stream:
     def __init__(self, handle, extensions: List[Extension]):
         # stats
         self.session_id = NotImplemented
-        
+
         self.handle = handle  # T7 device, Any connection, Any identifier
         self.scanRate = 20  # sets scanning rate (samples per second)
         self.scansPerRead = int(
@@ -236,11 +239,11 @@ class Stream:
             df = pd.DataFrame(data_2d, columns=self.aScanListNames)
             # print("AOIWDOIUAHW: ", df["SYSTEM_TIMER_20HZ"])
             df["SYSTEM_TIMER_20HZ"] /= 20
-            
+
             if not self.time_offset:
                 self.time_offset = time.time() - df["SYSTEM_TIMER_20HZ"][0]
             df["SYSTEM_TIMER_20HZ"] += self.time_offset
-            
+
             # print("offset: ", df.at[0, "SYSTEM_TIMER_20HZ"])
             for extension in self.extensions:
                 extension.process(
@@ -260,8 +263,8 @@ class Stream:
         with open("./config.json", "r") as fp:
             data = json.load(fp)
         self.session_id = data.get("session_id", -1)
-        
-        # Time Sync 
+
+        # Time Sync
         self.time_offset = None
         try:
             t0 = datetime.now()
