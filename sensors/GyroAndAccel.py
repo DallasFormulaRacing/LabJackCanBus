@@ -100,12 +100,10 @@ class Read(Thread):
         for i, row in accel_df.iterrows():
             time_value = row[TIME_ID]
             payload = {
-                'Data': {
-                    'fields': {
-                        'accel_x': row['x'],
-                        'accel_y': row['y'],
-                        'accel_z': row['z']
-                    }
+                'fields': {
+                    'accel_x': row['x'],
+                    'accel_y': row['y'],
+                    'accel_z': row['z']
                 }
             }
             self.telegraf_client.metric("accel_values", payload, tags={"source": "accel", "session_id": self.session_id}, timestamp=time_value)
@@ -115,12 +113,10 @@ class Read(Thread):
             time_value = row[TIME_ID]
 
             payload = {
-                'Data': {
-                    'fields': {
-                        'angular_x': row['angular x'],
-                        'angular_y': row['angular y'],
-                        'angular_z': row['angular z']
-                    }
+                'fields': {
+                    'angular_x': row['angular x'],
+                    'angular_y': row['angular y'],
+                    'angular_z': row['angular z']
                 }
             }
             self.telegraf_client.metric("gyro_values", payload, tags={"source": "gyro", "session_id": self.session_id}, timestamp=time_value)
