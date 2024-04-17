@@ -7,10 +7,12 @@ import adafruit_l3gd20
 from threading import Thread
 from sensors.AnalogStream import Extension
 import pandas as pd
+import json
 
 from telegraf.client import TelegrafClient
 
-telegraf_client = TelegrafClient(host="localhost", port=8092)
+
+TIME_ID = "t"
 
 
 class Accelerometer(Extension):
@@ -70,23 +72,10 @@ class Read(Thread):
 
         self.accel_df = pd.DataFrame()
         self.gyro_df = pd.DataFrame()
-
-    def send_a_g_metrics(self, accel_df: pd.DataFrame, gyro_df: pd.DataFrame):
-
-        with self.lock:
-            for columns in accel_df.columns, gyro_df.columns:
-                accel_metric_name = "accelerometer_".join(columns.lower())
-                gyro_metric_name = "_".join(columns.lower().split())
-                accel_value = accel_df[columns].values[-1]
-                gyro_value = gyro_df[columns].values[-1]
-                timestamp_accel = accel_df["t"].values[-1]
-                timestamp_gyro = gyro_df["t"].values[-1]
-
-                telegraf_client.metric(accel_metric_name, accel_value, timestamp=timestamp_accel)
-                telegraf_client.metric(gyro_metric_name, gyro_value, timestamp=timestamp_gyro)
+        self.telegraf_client = TelegrafClient(host="localhost", port=8092)
+        self.session_id = self.retrieve_session_id()
 
     def process(self):
-
         # intiialzize
         gyro = Gyro()
         xl = Accelerometer()
@@ -99,7 +88,42 @@ class Read(Thread):
             pd.concat([self.accel_df, xl_data], ignore_index=True)
             pd.concat([self.gyro_df, gyro_data], ignore_index=True)
 
-            self.send_a_g_metrics(self.accel_df, self.gyro_df)
+            self.send_accel_metrics(xl_data)
+            self.send_gyro_metrics(gyro_data)
+
+    def retrieve_session_id(self):
+        with open("config.json", "r") as config_file:
+            config = json.load(config_file)
+            return config["session_id"]
+
+    def send_accel_metrics(self, accel_df: pd.DataFrame):
+        for i, row in accel_df.iterrows():
+            time_value = row[TIME_ID]
+            payload = {
+                'Data': {
+                    'fields': {
+                        'accel_x': row['x'],
+                        'accel_y': row['y'],
+                        'accel_z': row['z']
+                    }
+                }
+            }
+            self.telegraf_client.metric("accel_values", payload, tags={"source": "accel", "session_id": self.session_id}, timestamp=time_value)
+
+    def send_gyro_metrics(self, gyro_df: pd.DataFrame):
+        for i, row in gyro_df.iterrows():
+            time_value = row[TIME_ID]
+
+            payload = {
+                'Data': {
+                    'fields': {
+                        'angular_x': row['angular x'],
+                        'angular_y': row['angular y'],
+                        'angular_z': row['angular z']
+                    }
+                }
+            }
+            self.telegraf_client.metric("gyro_values", payload, tags={"source": "gyro", "session_id": self.session_id}, timestamp=time_value)
 
     def stop(self):
         self._stop.set()
