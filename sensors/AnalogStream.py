@@ -48,10 +48,10 @@ class Extension(object):
 class Linpot(Extension):
     def __init__(self):
         self.aScanList = {
-            "AIN1": "front_left",
-            "AIN2": "rear_left",
-            "AIN3": "rear_right",
-            "AIN4": "front_right",
+            "AIN0": "front_left",
+            "AIN1": "rear_left",
+            "AIN2": "rear_right",
+            "AIN3": "front_right",
         }
 
         self.aScanListNames = list(self.aScanList.keys())
