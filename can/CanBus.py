@@ -1,6 +1,7 @@
 """
 CanBus Reader that writes to a provided file
 """
+
 import os
 import can
 from telegraf.client import TelegrafClient
@@ -12,6 +13,7 @@ class ECU(object):
         self.bus = None
         self.notifier = None
         self.writer = None
+        self.telegraf_client = TelegrafClient(host="localhost", port=8092)
 
         os.system("sudo ip link set can0 type can bitrate 250000")
         os.system("sudo ifconfig can0 up")
@@ -32,10 +34,12 @@ class ECU(object):
     def start(self, session_id: int):
         self.bus = can.interface.Bus(channel="can0", interface="socketcan")
         # Initialize CSVWriter to log messages to the global OUTPUT_FILE
-        self.writer = can.CSVWriter(self.output_file + "_ecu_" + str(session_id) + ".csv", overwrite=True)
+        self.writer = can.CSVWriter(
+            self.output_file + "_ecu_" + str(session_id) + ".csv", overwrite=True
+        )
 
         # Create a Notifier with the bus and the writer as listener
-        self.notifier = can.Notifier(self.bus, [self.writer])
+        self.notifier = can.Notifier(self.bus, [self.writer, self.process_message])
 
     def save(self):
         # In this context, messages are automatically saved by the CSVWriter as they arrive.
@@ -43,6 +47,15 @@ class ECU(object):
         # the CSVWriter or manage the file directly.
         # Since CSVWriter handles writing in real-time, there's no explicit save method required.
         pass
+
+    def process_message(self, message: can.Message):
+        # send to telegraf
+        self.telegraf_client.metric(
+            measurement_name="ecu_values",
+            values={"id": message.arbitration_id, "data": message.data},
+            tags={"source": "ecu"},
+            timestamp=message.timestamp,
+        )
 
     def stop(self):
         # Stop the notifier to clean up resources
