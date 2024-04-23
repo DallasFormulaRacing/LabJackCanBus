@@ -2,7 +2,7 @@ import time
 from sensors.AnalogStream import Linpot, Stream
 from sensors.GyroAndAccel import Read
 from button.ReadState import read_state
-from can.CanBus import ECU
+from ecu_can.CanBus import ECU
 from DAQState import DAQState
 import json
 from labjack import ljm
@@ -19,7 +19,7 @@ class DAQ(object):
 
         self.analog_stream: Stream | None = None
 
-        self.read_accel_gyro = Read
+        self.read_accel_gyro = None # Read
 
         self.canbus: ECU | None = None
 
@@ -58,6 +58,7 @@ class DAQ(object):
 
     @state.setter
     def state(self, new_state):
+        print("State Change: ", self._state, new_state)
         if new_state == self._state:
             return
         else:

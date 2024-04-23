@@ -15,7 +15,10 @@ class ECU(object):
         self.writer = None
         self.session_id = None
         self.telegraf_client = TelegrafClient(host="localhost", port=8092)
-
+        # shut down for safety
+        os.system("sudo ifconfig can0 down")
+        # we are actively breaking the current running process ^
+        
         os.system("sudo ip link set can0 type can bitrate 250000")
         os.system("sudo ifconfig can0 up")
 
