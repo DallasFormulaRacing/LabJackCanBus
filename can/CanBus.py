@@ -13,6 +13,7 @@ class ECU(object):
         self.bus = None
         self.notifier = None
         self.writer = None
+        self.session_id = None
         self.telegraf_client = TelegrafClient(host="localhost", port=8092)
 
         os.system("sudo ip link set can0 type can bitrate 250000")
@@ -32,10 +33,11 @@ class ECU(object):
         self.output_file = value
 
     def start(self, session_id: int):
+        self.session_id = session_id
         self.bus = can.interface.Bus(channel="can0", interface="socketcan")
         # Initialize CSVWriter to log messages to the global OUTPUT_FILE
         self.writer = can.CSVWriter(
-            self.output_file + "_ecu_" + str(session_id) + ".csv", overwrite=True
+            self.output_file + "_ecu_" + str(self.session_id) + ".csv", overwrite=True
         )
 
         # Create a Notifier with the bus and the writer as listener
@@ -53,7 +55,7 @@ class ECU(object):
         self.telegraf_client.metric(
             measurement_name="ecu_values",
             values={"id": message.arbitration_id, "data": message.data},
-            tags={"source": "ecu"},
+            tags={"source": "ecu", "session_id": self.session_id},
             timestamp=message.timestamp,
         )
 
