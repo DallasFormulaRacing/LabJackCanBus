@@ -13,6 +13,7 @@ class ECU(object):
         self.bus = None
         self.notifier = None
         self.writer = None
+        self.session_id = -1
         self.session_id = None
         self.telegraf_client = TelegrafClient(host="localhost", port=8092)
         # shut down for safety
@@ -37,6 +38,7 @@ class ECU(object):
 
     def start(self, session_id: int):
         self.session_id = session_id
+        self.session_id = session_id
         self.bus = can.interface.Bus(channel="can0", interface="socketcan")
         # Initialize CSVWriter to log messages to the global OUTPUT_FILE
         self.writer = can.CSVWriter(
@@ -55,12 +57,18 @@ class ECU(object):
 
     def process_message(self, message: can.Message):
         # send to telegraf
+        
+        data_strings = []
+        for index in range(0, min(message.dlc, len(message.data))):
+            data_strings.append(f"{message.data[index]:02x}")
+            
         self.telegraf_client.metric(
-            measurement_name="ecu_values",
-            values={"id": message.arbitration_id, "data": message.data},
-            tags={"source": "ecu", "session_id": self.session_id},
-            timestamp=message.timestamp,
+            measurement_name="ecu",
+            values={"id": message.arbitration_id, "data": " ".join(data_strings)},
+            tags={"source": "ecu", "session_id": str(self.session_id), "session_id": self.session_id},
+            timestamp=str(int(message.timestamp * 1e9 )),
         )
+        self.telegraf_client.metric(measurement_name="test", values={"s1": 12390, "s2": 130948}, tags={"source": "test_source", "session_id": -1}, timestamp=0)
 
     def stop(self):
         # Stop the notifier to clean up resources

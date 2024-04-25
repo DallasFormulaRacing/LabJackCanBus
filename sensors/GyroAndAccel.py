@@ -100,7 +100,7 @@ class Read(Thread):
             logging.info(f"Retrieved session id: {session_id}")
             return session_id
 
-    def process(self):
+    def _run(self):
 
         logging.info("Processing data")
         # loop

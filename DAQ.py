@@ -103,6 +103,9 @@ class DAQ(object):
             self.analog_stream = Stream(handle=self.handle, extensions=[Linpot()])
             self.canbus = ECU(output_path=self.output_path + f"/can-")
             self.handle = self.analog_stream.handle
+            
+            if self.read_accel_gyro:
+                self.read_accel_gyro = Read()
 
     def _run(self):
         while True:
