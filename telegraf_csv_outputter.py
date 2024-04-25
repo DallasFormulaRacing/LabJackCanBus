@@ -2,7 +2,7 @@ from line_protocol_parser import parse_line
 import os
 
 # Output folder path
-OUTPUT_FOLDER_PATH = "/home/rayyans/LabJackCanBus_Telegraf/output_data_test"
+OUTPUT_FOLDER_PATH = "/home/rayyans/LabJackCanBus_Telegraf/Telegraf_Output"
 
 current_session = None
 sensor_files = {}
