@@ -115,6 +115,7 @@ class Read(threading.Thread):
 
         logging.info("Processing data")
         while not self.stop_event.is_set():
+            self.stop_event.wait(0.05)
             gyro_data = self.gyro.poll()
             xl_data = self.accel.poll()
             self.accel_df = pd.concat([self.accel_df, xl_data], ignore_index=True)
