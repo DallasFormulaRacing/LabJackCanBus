@@ -97,6 +97,8 @@ class Read(Thread):
     def __init__(self):
         super().__init__(target=self._run)
 
+        # self._stop = threading.Event()
+
         self.accel_df = pd.DataFrame()
         self.gyro_df = pd.DataFrame()
         self.session_id = self.retrieve_session_id()
@@ -110,11 +112,10 @@ class Read(Thread):
             logging.info(f"Retrieved session id: {session_id}")
             return session_id
 
-    def _run(self):
-
+    def run(self):
         logging.info("Processing data")
-        # loop
-        while not self._stop.is_set():
+
+        for _ in range(1000):
             gyro_data = self.gyro.poll()
             xl_data = self.accel.poll()
             self.accel_df = pd.concat([self.accel_df, xl_data], ignore_index=True)
