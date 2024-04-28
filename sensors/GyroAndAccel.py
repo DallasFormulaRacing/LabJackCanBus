@@ -126,6 +126,10 @@ class Read(Thread):
     #     logging.info("Stopping data collection")
     #     self._stop.set()
     #     self.join()
+    def stop(self):
+        logging.info("Stopping data collection")
+        self._stop.set()
+        self.join()
 
     def save(self, accel_fp: str, gyro_fp: str):
         with self.lock:
