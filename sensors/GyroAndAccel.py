@@ -98,6 +98,7 @@ class Read(Thread):
         super().__init__(target=self._run)
 
         # self._stop = threading.Event()
+        self.lock = threading.Lock()
 
         self.accel_df = pd.DataFrame()
         self.gyro_df = pd.DataFrame()
@@ -112,10 +113,10 @@ class Read(Thread):
             logging.info(f"Retrieved session id: {session_id}")
             return session_id
 
-    def run(self):
+    def _run(self):
         logging.info("Processing data")
 
-        for _ in range(1000):
+        with self.lock:
             gyro_data = self.gyro.poll()
             xl_data = self.accel.poll()
             self.accel_df = pd.concat([self.accel_df, xl_data], ignore_index=True)
@@ -127,9 +128,10 @@ class Read(Thread):
     #     self.join()
 
     def save(self, accel_fp: str, gyro_fp: str):
-        logging.info(f"Saving data to {accel_fp} and {gyro_fp}")
-        self.accel_df.to_csv(accel_fp, index=False)
-        self.gyro_df.to_csv(gyro_fp, index=False)
+        with self.lock:
+            logging.info(f"Saving data to {accel_fp} and {gyro_fp}")
+            self.accel_df.to_csv(accel_fp, index=False)
+            self.gyro_df.to_csv(gyro_fp, index=False)
 
 
 # if __name__ == "__main__":
