@@ -68,7 +68,6 @@ class ECU(object):
             tags={"source": "ecu", "session_id": str(self.session_id), "session_id": self.session_id},
             timestamp=str(int(message.timestamp * 1e9 )),
         )
-        self.telegraf_client.metric(measurement_name="test", values={"s1": 12390, "s2": 130948}, tags={"source": "test_source", "session_id": -1}, timestamp=0)
 
     def stop(self):
         # Stop the notifier to clean up resources
