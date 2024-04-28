@@ -97,8 +97,6 @@ class Read(Thread):
     def __init__(self):
         super().__init__(target=self._run)
 
-        self._stop = threading.Event()
-
         self.accel_df = pd.DataFrame()
         self.gyro_df = pd.DataFrame()
         self.session_id = self.retrieve_session_id()
@@ -122,10 +120,10 @@ class Read(Thread):
             self.accel_df = pd.concat([self.accel_df, xl_data], ignore_index=True)
             self.gyro_df = pd.concat([self.gyro_df, gyro_data], ignore_index=True)
 
-    def stop(self):
-        logging.info("Stopping data collection")
-        self._stop.set()
-        self.join()
+    # def stop(self):
+    #     logging.info("Stopping data collection")
+    #     self._stop.set()
+    #     self.join()
 
     def save(self, accel_fp: str, gyro_fp: str):
         logging.info(f"Saving data to {accel_fp} and {gyro_fp}")
