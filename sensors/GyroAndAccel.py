@@ -30,21 +30,27 @@ class Accelerometer(Extension):
         accel_x, accel_y, accel_z = self.accelerometer.acceleration
         timestamp = time.time()
 
-        # changed from a list to variable, are we expecting multiple values?
-        payload = {
-            "t": timestamp,
-            "x": accel_x,
-            "y": accel_y,
-            "z": accel_z
-        }
-
         try:
-            logging.info(f"Attempting to send data to telegraf: {payload}")
-            self.telegraf_client.metric("accel_values", payload, tags={"source": "accel", "session_id": self.session_id})
+            self.telegraf_client.metric(
+                "accel_values",
+                values={"accel_x": accel_x, "accel_y": accel_y, "accel_z": accel_z},
+                timestamp=str(int(timestamp * 1e9)),
+                tags={"source": "accel", "session_id": self.session_id},
+            )
 
-            return pd.DataFrame(data=payload)
         except Exception as e:
-            logging.error(f"Error sending data to telegraf: {e}\n{traceback.format_exc()}")
+            logging.error(
+                f"Error sending data to telegraf: {e}\n{traceback.format_exc()}"
+            )
+
+        return pd.DataFrame(
+            data={
+                "t": timestamp,
+                "accel_x": [accel_x],
+                "accel_y": [accel_y],
+                "accel_z": [accel_z],
+            }
+        )
 
 
 class Gyro(Extension):
@@ -63,21 +69,27 @@ class Gyro(Extension):
         ang_x, ang_y, ang_z = self.gyroscope.gyro
         timestamp = time.time()
 
-        # changed from a list to variable, are we expecting multiple values?
-        payload = {
-            "t": timestamp,
-            "angular x": ang_x,
-            "angular y": ang_y,
-            "angular z": ang_z
-        }
-
         try:
-            logging.info(f"Attempting to send data to telegraf: {payload}")
-            self.telegraf_client.metric("gyro_values", payload, tags={"source": "gyro", "session_id": self.session_id})
+            self.telegraf_client.metric(
+                "gyro_values",
+                values={"angular_x": ang_x, "angular_y": ang_y, "angular_z": ang_z},
+                timestamp=str(int(timestamp * 1e9)),
+                tags={"source": "gyro", "session_id": self.session_id},
+            )
 
-            return pd.DataFrame(data=payload)
         except Exception as e:
-            logging.error(f"Error sending data to telegraf: {e}\n{traceback.format_exc()}")
+            logging.error(
+                f"Error sending data to telegraf: {e}\n{traceback.format_exc()}"
+            )
+
+        return pd.DataFrame(
+            data={
+                "t": timestamp,
+                "angular_x": [ang_x],
+                "angular_y": [ang_y],
+                "angular_z": [ang_z],
+            }
+        )
 
 
 class Read(Thread):

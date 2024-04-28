@@ -19,7 +19,7 @@ class DAQ(object):
 
         self.analog_stream: Stream | None = None
 
-        self.read_accel_gyro = None # Read
+        self.read_accel_gyro: Read | None = None
 
         self.canbus: ECU | None = None
 
@@ -76,7 +76,8 @@ class DAQ(object):
                 self.canbus.start(session_id=self.session_id)
 
             if self.read_accel_gyro:
-                self.read_accel_gyro.process()
+                # self.read_accel_gyro.process()
+                self.read_accel_gyro._run()
 
         elif new_state == DAQState.SAVING:
             if self.analog_stream:
@@ -104,8 +105,7 @@ class DAQ(object):
             self.canbus = ECU(output_path=self.output_path + f"/can-")
             self.handle = self.analog_stream.handle
             
-            if self.read_accel_gyro:
-                self.read_accel_gyro = Read()
+            self.read_accel_gyro = Read()
 
     def _run(self):
         while True:
