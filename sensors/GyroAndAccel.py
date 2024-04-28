@@ -92,13 +92,11 @@ class Gyro(Extension):
         )
 
 
-class Read(Thread):
+class Read(threading.Thread):
 
     def __init__(self):
-        super().__init__(target=self._run)
-
-        # self._stop = threading.Event()
-        self.lock = threading.RLock()
+        super().__init__(target=self.start_reading)
+        self.stop_event = threading.Event()
 
         self.accel_df = pd.DataFrame()
         self.gyro_df = pd.DataFrame()
@@ -113,29 +111,25 @@ class Read(Thread):
             logging.info(f"Retrieved session id: {session_id}")
             return session_id
 
-    def _run(self):
-        logging.info("Processing data")
+    def start_reading(self):
 
-        with self.lock:
+        logging.info("Processing data")
+        while not self.stop_event.is_set():
             gyro_data = self.gyro.poll()
             xl_data = self.accel.poll()
             self.accel_df = pd.concat([self.accel_df, xl_data], ignore_index=True)
             self.gyro_df = pd.concat([self.gyro_df, gyro_data], ignore_index=True)
+            
+        return 
 
-    # def stop(self):
-    #     logging.info("Stopping data collection")
-    #     self._stop.set()
-    #     self.join()
-    def stop(self):
+    def stop_reading(self):
         logging.info("Stopping data collection")
-        self._stop.set()
-        self.join()
+        self.stop_event.set()
 
     def save(self, accel_fp: str, gyro_fp: str):
-        with self.lock:
-            logging.info(f"Saving data to {accel_fp} and {gyro_fp}")
-            self.accel_df.to_csv(accel_fp, index=False)
-            self.gyro_df.to_csv(gyro_fp, index=False)
+        logging.info(f"Saving data to {accel_fp} and {gyro_fp}")
+        self.accel_df.to_csv(accel_fp, index=False)
+        self.gyro_df.to_csv(gyro_fp, index=False)
 
 
 # if __name__ == "__main__":
