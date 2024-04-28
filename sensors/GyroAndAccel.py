@@ -98,7 +98,7 @@ class Read(Thread):
         super().__init__(target=self._run)
 
         # self._stop = threading.Event()
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
 
         self.accel_df = pd.DataFrame()
         self.gyro_df = pd.DataFrame()
