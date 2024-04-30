@@ -1,5 +1,5 @@
 import threading
-import time
+from scipy.signal import butter
 import busio
 import board
 import adafruit_lsm303_accel
@@ -10,9 +10,11 @@ import pandas as pd
 import json
 import logging
 import traceback
-
+import time
 from telegraf.client import TelegrafClient
 
+def butter_lowpass(cutoff, fs, order = 5):
+    return butter(order, cutoff, fs = fs, btype='low', analog=False)
 
 class Accelerometer(Extension):
     def __init__(self, session_id: float):
@@ -112,7 +114,7 @@ class Read(threading.Thread):
             return session_id
 
     def start_reading(self):
-
+        self.session_id = self.retrieve_session_id()
         logging.info("Processing data")
         while not self.stop_event.is_set():
             self.stop_event.wait(0.05)
