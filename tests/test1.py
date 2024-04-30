@@ -2,7 +2,7 @@ import os
 import can
 import threading
 import time
-from messageIDs import canMessageSort
+from can.messageIDs import canMessageSort
 from labjack import ljm
 
 can.rc['interface'] = 'socketcan'
