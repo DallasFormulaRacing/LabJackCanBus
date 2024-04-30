@@ -1,185 +1,152 @@
-import os
-import can
 import time
+from sensors.AnalogStream import Linpot, Stream
+from sensors.GyroAndAccel import Read
+from button.ReadState import read_state
+from ecu_can.CanBus import ECU
 from DAQState import DAQState
-from messageIDs import canMessageSort, can_messages_cols
-from button_state.ReadState import read_state
-from read_accel.read_xl_analog import read_xl_analog
-import csv
-import threading
+import json
 from labjack import ljm
-import pandas as pd
-from datetime import datetime
+import logging
 
-# can.rc['interface'] = 'socketcan'
-# os.system('sudo ip link set can0 type can bitrate 250000')
-# os.system('sudo ifconfig can0 up')
-# can0 = can.interface.Bus(channel="can0", interface="socketcan")
+logging.basicConfig(level=logging.DEBUG)
 
 
-class DAQObject:
+class DAQ(object):
+    def __init__(self, output_path: str, session_id: int = 0):
+        self.output_path = output_path
 
-    def __init__(self, output_file: str):
+        self.log = logging.getLogger("DAQ")
 
-        self.currentState = DAQState.INIT
-        self.output_file = output_file
-        self.file = open("ecudata.csv", mode='w')
-        # self.writer = can.CSVWriter(self.file, append=True)
-        self.ecu_columns = can_messages_cols
-        self.ecu_df = pd.DataFrame(columns=self.ecu_columns)
-        self.linpot_df = pd.DataFrame(
-            columns=["Time", "Front Right", "Front Left", "Rear Right", "Rear Left"])
-        self.ECUData = [None] * 16
-        self.LJData = []
-        self.writeData = [None]
-        self.handle = ljm.openS("T7")
+        self.analog_stream: Stream | None = None
 
-        # self.canbus = threading.Thread(target=self.readCAN)
-        self.run = threading.Thread(target=self.DAQRun)
-        # self.read_xl = threading.Thread(target=self.read_xl)
-        self.can_read_lock = threading.Lock()
-        self.daq_run_lock = threading.Lock()
-        # self.xl_read_lock = threading.Lock()
-        # self.daq_run_lock.acquire()
-        self.read_xl_analog_instance = read_xl_analog()
+        self.read_accel_gyro: Read | None = None
 
-        self.fr_names = ["AIN1_RESOLUTION_INDEX"]
-        self.fl_names = ["AIN2_RESOLUTION_INDEX"]
-        self.rr_names = ["AIN3_RESOLUTION_INDEX"]
-        self.rl_names = ["AIN4_RESOLUTION_INDEX"]
-        self.num_frames = len(self.fr_names)
-        self.aValues = [12]
-        ljm.eWriteNames(self.handle, self.num_frames,
-                        self.fr_names, self.aValues)
-        ljm.eWriteNames(self.handle, self.num_frames,
-                        self.fl_names, self.aValues)
-        ljm.eWriteNames(self.handle, self.num_frames,
-                        self.rr_names, self.aValues)
-        ljm.eWriteNames(self.handle, self.num_frames,
-                        self.rl_names, self.aValues)
+        self.canbus: ECU | None = None
 
-        self.run_count = 0
+        self.handle = ljm.openS(
+            "T7", "ANY", "ANY"
+        )
+        self._state = None
+        self._session_id = session_id or 0
 
-    def setSMState(self, nextState: DAQState) -> None:
-        self.currentState = nextState
+        self.log.info("session id: %s", self.session_id)
 
-    def readLJ(self):
-        return ljm.eReadName(self.handle, "AIN0")
+    @property
+    def session_id(self):
+        return self._session_id
 
-    def start_threads(self):
-        # self.canbus.start()
-        self.run.start()
+    @session_id.setter
+    def session_id(self, new_session_id):
+        if new_session_id == self._session_id:
+            return
+        self._session_id = new_session_id
 
-    def readCAN(self):
+        # update json file
+        with open("./config.json", "r+", encoding="utf8") as f:
+            try:
+                config = json.load(f)
+            except json.JSONDecodeError:
+                config = {}
+            config["session_id"] = new_session_id
+            f.seek(0)
+            json.dump(config, f)
+            f.truncate()
 
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, new_state):
+        print("State Change: ", self._state, new_state)
+        if new_state == self._state:
+            return
+        else:
+            self.log.info("New State: %s", new_state)
+            print(new_state)
+
+        self._state = new_state
+
+        if new_state == DAQState.COLLECTING:
+            self.session_id += 1
+            if self.analog_stream:
+                self.analog_stream.start()
+
+            if self.canbus:
+                self.canbus.start(session_id=self.session_id)
+
+            if self.read_accel_gyro:
+                self.read_accel_gyro.start()    # Cannot be called more than once per thread
+
+        elif new_state == DAQState.SAVING:
+            if self.analog_stream:
+                self.analog_stream.stop()
+
+            if self.canbus:
+                self.canbus.stop()
+
+            if self.read_accel_gyro:
+                self.read_accel_gyro.stop_reading()
+
+            if self.analog_stream:
+                self.analog_stream.save(self.output_path + f"/analog-{{}}-{self.session_id}.csv")
+                self.analog_stream = Stream(self.handle, extensions=[Linpot()])
+
+            if self.canbus:
+                self.canbus.save()
+
+            if self.read_accel_gyro:
+                self.read_accel_gyro.join()     # Terminates thread
+                self.read_accel_gyro.save(self.output_path + f"/accel-{self.session_id}.csv", self.output_path
+                                          + f"/gyro-{self.session_id}.csv")
+
+                self.read_accel_gyro = Read()   # Re-initializes thread to reset session id
+
+        elif new_state == DAQState.INIT:
+            self.analog_stream = Stream(handle=self.handle, extensions=[Linpot()])
+            self.canbus = ECU(output_path=self.output_path + f"/can-")
+            self.handle = self.analog_stream.handle
+
+            self.read_accel_gyro = Read()
+
+    def _run(self):
         while True:
-            if self.currentState == DAQState.SAVING:
-                continue
-            with can.Bus() as bus:
-                self.daq_run_lock.acquire()
-                msg = bus.recv()
-
-                index = canMessageSort.get(msg.arbitration_id)
-                self.ECUData[index] = msg.data
-                self.daq_run_lock.release()
-
-    # def read_xl(self):
-
-    #     while True:
-    #         if self.currentState == DAQState.SAVING:
-    #             continue
-    #         self.daq_run_lock.acquire()
-    #         read_xl_analog.read_xl_one(self.handle)
-    #         read_xl_analog.read_xl_two(self.handle)
-    #         self.daq_run_lock.release()
-
-    def resolveError(self) -> bool:
-        try:
-            return True
-        except ljm.LJMError:
-            return False
-
-    def DAQRun(self) -> None:
-
-        nextTime = time.time()
-        index = 0
-        while True:
-
-            self.can_read_lock.acquire()
             button_clicked = read_state.read_button_state(self.handle)
-
-            if time.time() < nextTime:
-                time.sleep(0)
-
-            else:
-                nextTime = time.time()
-
             if button_clicked:
-                if self.currentState == DAQState.INIT:
-                    print("collecting")
-                    self.setSMState(DAQState.COLLECTING)
-                elif self.currentState == DAQState.SAVING:
-                    print("collecting")
-                    self.setSMState(DAQState.COLLECTING)
+                if self.state in [DAQState.INIT, DAQState.SAVING]:
+                    # startup is done
+                    self.state = DAQState.COLLECTING
 
-                if self.currentState == DAQState.COLLECTING:
+            elif self.state == DAQState.COLLECTING:
+                self.state = DAQState.SAVING
 
-                    try:
-                        self.read_xl_analog_instance.read_xl_one(
-                            self.handle, index)
-                        # read_xl_analog.read_xl_two(self.handle, index)
-                        current_time = time.time()
-                        self.linpot_df.loc[index, "Time"] = current_time
-                        self.linpot_df.loc[index, "Front Right"] = ljm.eReadName(
-                            self.handle, "AIN1")
-                        self.linpot_df.loc[index, "Front Left"] = ljm.eReadName(
-                            self.handle, "AIN2")
-                        self.linpot_df.loc[index, "Rear Right"] = ljm.eReadName(
-                            self.handle, "AIN3")
-                        self.linpot_df.loc[index, "Rear Left"] = ljm.eReadName(
-                            self.handle, "AIN4")
-                        index += 1
-                        print(self.linpot_df.tail(1))
-                        self.linpot_df.to_csv()
-                    except ljm.LJMError:
-                        self.currentState == DAQState.ERROR
+            time.sleep(0)
 
-                        if self.resolveError():
-                            break
+    def start(self):
+        self.log.info("Starting DAQ")
 
-                        print("LabJack Efrrfffor", ljm.LJMError)
-
-            else:
-                if self.currentState == DAQState.COLLECTING:
-                    print("saving")
-
-                    now = datetime.strftime(
-                        datetime.now(), "%Y-%m-%d_%H-%M-%S")
-                    self.linpot_df.to_csv(
-                        f"{self.output_file}_linpot_{now}.csv", index=False)
-
-                    # clear linpot_df
-                    self.linpot_df = pd.DataFrame(
-                        columns=self.linpot_df.columns)
-
-                    # saving xl file data
-                    self.read_xl_analog_instance.save_xl_files()
-                    self.read_xl_analog_instance.clear_xl_files()
-
-                    self.setSMState(DAQState.SAVING)
-                    self.run_count += 1
-
-            self.can_read_lock.release()
+        self.state = DAQState.INIT
+        try:
+            self._run()
+        except KeyboardInterrupt:
+            self.log.info("DAQ Stopped")
+        finally:
+            self.state = DAQState.SAVING
+            self.log.info("DAQ Stopped")
 
     def __del__(self):
-
-        os.system('sudo ifconfig can0 down')
+        if self.handle:
+            ljm.close(self.handle)
+            self.handle = None
 
 
 if __name__ == "__main__":
+    try:
+        with open("./config.json", "r+", encoding="utf8") as f:
+            config = json.load(f)
+    except:
+        config = {}
 
-    DAQ = DAQObject("data/output2")
-    DAQ.start_threads()
+    daq = DAQ(config.get("output", "test-data"), session_id=config.get("session_id", 0))
 
-    print("test")
-    time.sleep(10)
+    daq.start()

@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import sys
@@ -10,6 +11,8 @@ from typing import List
 import numpy as np
 import pandas as pd
 from labjack import ljm
+from telegraf.client import TelegrafClient
+
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -45,19 +48,21 @@ class Extension(object):
 class Linpot(Extension):
     def __init__(self):
         self.aScanList = {
-            "AIN1": "Front Right",
-            "AIN2": "Front Left",
-            "AIN3": "Rear Right",
-            "AIN4": "Rear Left",
+            "AIN0": "front_left",
+            "AIN1": "rear_left",
+            "AIN2": "rear_right",
+            "AIN3": "front_right",
         }
 
         self.aScanListNames = list(self.aScanList.keys())
-
         self.lock = threading.Lock()
         print("CREATING PANDAS DATAFRAME")
         self.df = pd.DataFrame(columns=list(self.aScanList.values()) + [TIME_IDX])
+        self.telegraf_client = TelegrafClient(host="localhost", port=8092)
+        self.stream = None 
 
     def setup(self, si: "Stream"):
+        self.stream = si
         si.aScanListNames.extend(self.aScanListNames)
 
         frames = [
@@ -68,11 +73,25 @@ class Linpot(Extension):
         ]
         ljm.eWriteNames(si.handle, len(frames), frames, [12] * len(frames))
 
+    def send_linpot_metrics(self, data: pd.DataFrame):
+        try:
+            for index, row in data.iterrows():
+                timestamp = row[TIME_IDX] * 1e9 # conversion to nanoseconds
+
+                data = row[list(self.aScanList.values())]
+                metric_fmt = lambda name : "_".join(name.split(" ")).lower()
+                data.rename(metric_fmt)
+                self.telegraf_client.metric("linpots", data.to_dict(), tags={"source": "linpot", "session_id": self.stream.session_id}, timestamp=str(int(timestamp)))
+        except Exception as e:
+            logging.error(f"Error sending data to telegraf: {e}\n{traceback.format_exc()}")
+
     def process(self, data: pd.DataFrame):
         data.rename(columns=self.aScanList, inplace=True)
+
         with self.lock:
             self.df = pd.concat([self.df, data], ignore_index=True)
-        print(self.df)
+            self.send_linpot_metrics(data)
+        # print(self.df)
 
     def save(self, fp: str, *, index: bool = False) -> None:
         fp = fp.format("linpot")
@@ -86,13 +105,12 @@ class Linpot(Extension):
 
 
 class Stream:
-    def __init__(self, extensions: List[Extension]):
+    def __init__(self, handle, extensions: List[Extension]):
         # stats
-        self.handle = ljm.openS(
-            "T7", "ANY", "ANY"
-        )  # T7 device, Any connection, Any identifier
+        self.session_id = NotImplemented
 
-        self.scanRate = 100  # sets scanning rate (samples per second)
+        self.handle = handle  # T7 device, Any connection, Any identifier
+        self.scanRate = 20  # sets scanning rate (samples per second)
         self.scansPerRead = int(
             self.scanRate / 2
         )  # Initializes the number of scans per read
@@ -136,7 +154,7 @@ class Stream:
 
             # Enabling internally-clocked stream.
             ljm.eWriteName(self.handle, "STREAM_RESOLUTION_INDEX", 2)
-        except:
+        except ljm.LJMError:
             pass
 
         for extension in extensions:
@@ -219,7 +237,14 @@ class Stream:
 
             # convert to a pandas dataset for ease of use (can be optimized out if wanted)
             df = pd.DataFrame(data_2d, columns=self.aScanListNames)
+            # print("AOIWDOIUAHW: ", df["SYSTEM_TIMER_20HZ"])
+            df["SYSTEM_TIMER_20HZ"] /= 20
 
+            if not self.time_offset:
+                self.time_offset = time.time() - df["SYSTEM_TIMER_20HZ"][0]
+            df["SYSTEM_TIMER_20HZ"] += self.time_offset
+
+            # print("offset: ", df.at[0, "SYSTEM_TIMER_20HZ"])
             for extension in self.extensions:
                 extension.process(
                     df[extension.aScanListNames + ["SYSTEM_TIMER_20HZ"]].copy()
@@ -235,6 +260,12 @@ class Stream:
                 self.logger.error(err)
 
     def start(self):
+        with open("./config.json", "r") as fp:
+            data = json.load(fp)
+        self.session_id = data.get("session_id", -1)
+
+        # Time Sync
+        self.time_offset = None
         try:
             t0 = datetime.now()
 
@@ -255,22 +286,6 @@ class Stream:
             ljm.setStreamCallback(self.handle, self.process_buffer_callback)
 
             self.logger.info("Stream running and callback set.")
-            self.logger.info("Waiting for Ctrl+C...")
-
-            try:
-                while not self.done:
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                self.stop()
-            finally:
-                self.save(fp="test-{}.csv")
-
-            t1 = datetime.now()
-
-            self.logger.info(
-                "Streaming done. %.3f milliseconds have elapsed since eStreamStart",
-                ((t1 - t0).seconds * 1000 + float((t1 - t0).microseconds) / 1000),
-            )
         except ljm.LJMError:
             ljme = sys.exc_info()[1]
             self.logger.error(ljme)
@@ -295,11 +310,15 @@ class Stream:
         for extension in self.extensions:
             extension.save(fp)
 
-    def __del__(self):
-        ljm.close(self.handle)
-
 
 if __name__ == "__main__":
     analog_stream = Stream(extensions=[Linpot()])
 
     analog_stream.start()
+    try:
+        while not analog_stream.done:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        analog_stream.stop()
+    finally:
+        analog_stream.save(fp="test-{}.csv")

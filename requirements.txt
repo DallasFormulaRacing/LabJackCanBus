@@ -1,3 +1,4 @@
 pandas
 labjack-ljm
 python-can
+Adafruit-Blinka == 8.39.1
