@@ -6,9 +6,6 @@ from sensors.GyroAndAccel import Read
 import logging
 import traceback
 
-telegraf_client = TelegrafClient(host="localhost", port=8092)
-session_id = Read.retrieve_session_id()
-
 
 class read_state:
 
@@ -23,6 +20,9 @@ class read_state:
         name = "FIO0"
 
         try:
+            telegraf_client = TelegrafClient(host="localhost", port=8092)
+            session_id = Read.retrieve_session_id()
+
             result = ljm.eReadName(handle, name)
             button_pressed = read_state.check_button_state(result)
 
