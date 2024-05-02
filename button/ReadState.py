@@ -1,13 +1,13 @@
 import time
 from labjack import ljm
 from DAQState import DAQState
+from telegraf.client import TelegrafClient
+from sensors.GyroAndAccel import Read
+import logging
+import traceback
 
-
-'''
-Currently reads in the voltage from AIN0, which is connected to the button.
-need to implement it in a way that will return bool true when the button is pressed
-and false when it is not pressed. when pressed in Collecting State else in the Error state
-'''
+telegraf_client = TelegrafClient(host="localhost", port=8092)
+session_id = Read.retrieve_session_id()
 
 
 class read_state:
@@ -19,11 +19,26 @@ class read_state:
             return False
 
     def read_button_state(handle) -> bool:
+        timestamp = time.time()
         name = "FIO0"
-        result = ljm.eReadName(handle, name)
-        #  print(f"\n{name} reading : {result} V", flush=True)
-        button_pressed = read_state.check_button_state(result)
-        return button_pressed
+
+        try:
+            result = ljm.eReadName(handle, name)
+            button_pressed = read_state.check_button_state(result)
+
+            telegraf_client.metric(
+                "button_voltage",
+                values={"voltage": result},
+                timestamp=str(int(timestamp * 1e9)),
+                tags={"source": "button", "session_id": session_id},
+            )
+
+            return button_pressed
+
+        except Exception as e:
+            logging.error(
+                f"Error sending data to telegraf: {e}\n{traceback.format_exc()}"
+            )
 
     def close_read(self):
         self.currentState = DAQState.SAVING
