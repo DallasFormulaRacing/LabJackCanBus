@@ -103,8 +103,20 @@ class Read(threading.Thread):
         self.accel_df = pd.DataFrame()
         self.gyro_df = pd.DataFrame()
         self.session_id = self.retrieve_session_id()
-        self.gyro = Gyro(self.session_id)
-        self.accel = Accelerometer(self.session_id)
+        
+        try:
+            self.gyro = Gyro(self.session_id)
+        except Exception as e:
+            logging.error(
+                f"Failed to initialize gyroscope: {e}\n{traceback.format_exc()}"
+            )
+            
+        try:
+            self.accel = Accelerometer(self.session_id)
+        except Exception as e:
+            logging.error(
+                f"Failed to initialize accelerometer: {e}\n{traceback.format_exc()}"
+            )
 
     def retrieve_session_id(self):
         with open("config.json", "r") as config_file:
@@ -118,10 +130,14 @@ class Read(threading.Thread):
         logging.info("Processing data")
         while not self.stop_event.is_set():
             self.stop_event.wait(0.05)
-            gyro_data = self.gyro.poll()
-            xl_data = self.accel.poll()
-            self.accel_df = pd.concat([self.accel_df, xl_data], ignore_index=True)
-            self.gyro_df = pd.concat([self.gyro_df, gyro_data], ignore_index=True)
+            
+            if self.gyro:
+                gyro_data = self.gyro.poll()
+                self.gyro_df = pd.concat([self.gyro_df, gyro_data], ignore_index=True)
+                
+            if self.accel:
+                xl_data = self.accel.poll()
+                self.accel_df = pd.concat([self.accel_df, xl_data], ignore_index=True)
             
         return 
 
@@ -131,8 +147,12 @@ class Read(threading.Thread):
 
     def save(self, accel_fp: str, gyro_fp: str):
         logging.info(f"Saving data to {accel_fp} and {gyro_fp}")
-        self.accel_df.to_csv(accel_fp, index=False)
-        self.gyro_df.to_csv(gyro_fp, index=False)
+        
+        if self.accel:
+            self.accel_df.to_csv(accel_fp, index=False)
+            
+        if self.gyro:
+            self.gyro_df.to_csv(gyro_fp, index=False)
 
 
 # if __name__ == "__main__":
