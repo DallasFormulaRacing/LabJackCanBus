@@ -22,25 +22,26 @@ while True:
     print(line_data)
     session_id = line_data["tags"]["session_id"]
     
-    session_folder = os.path.join(OUTPUT_FOLDER_PATH, rf"session_{session_id}")
-    if not os.path.exists(session_folder):
-        os.makedirs(session_folder)
+    # session_folder = os.path.join(OUTPUT_FOLDER_PATH, rf"session_{session_id}")
+    # if not os.path.exists(session_folder):
+    #     os.makedirs(session_folder)
     
     sensor_type = line_data["tags"]["source"]
+    sensor_file_path = os.path.join(OUTPUT_FOLDER_PATH, f"{session_id}-{sensor_type}.csv")
 
     if sensor_type not in sensor_files:
         sensor_files[sensor_type] = open(
-            os.path.join(session_folder, f"{sensor_type}.csv"), "a"
+            sensor_file_path, "a"
         )
         sensor_files[sensor_type].write(
             "time," + ",".join(line_data["fields"].keys()) + "\n"
         )
 
-    # Sensor file exists in different session folder
-    elif not os.path.exists(os.path.join(session_folder, f"{sensor_type}.csv")):
+    # Different session id
+    elif sensor_files[sensor_type].name != sensor_file_path:
         sensor_files[sensor_type].close()
         sensor_files[sensor_type] = open(
-            os.path.join(session_folder, f"{sensor_type}.csv"), "a"
+            sensor_file_path, "a"
         )
 
     sensor_files[sensor_type].write(
