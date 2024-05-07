@@ -19,12 +19,11 @@ class read_state:
         timestamp = time.time()
         name = "FIO0"
 
+        result = ljm.eReadName(handle, name)
+        button_pressed = read_state.check_button_state(result)
+        
         try:
             telegraf_client = TelegrafClient(host="localhost", port=8092)
-
-            result = ljm.eReadName(handle, name)
-            button_pressed = read_state.check_button_state(result)
-
             telegraf_client.metric(
                 "button_voltage",
                 values={"voltage": result},
@@ -32,12 +31,13 @@ class read_state:
                 tags={"source": "button", "session_id": session_id},
             )
 
-            return button_pressed
-
         except Exception as e:
             logging.error(
                 f"Error sending data to telegraf: {e}\n{traceback.format_exc()}"
             )
+            
+        finally:
+            return button_pressed
 
     def close_read(self):
         self.currentState = DAQState.SAVING
