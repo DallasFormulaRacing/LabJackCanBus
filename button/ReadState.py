@@ -15,13 +15,12 @@ class read_state:
         else:
             return False
 
-    def read_button_state(handle) -> bool:
+    def read_button_state(handle, session_id: int) -> bool:
         timestamp = time.time()
         name = "FIO0"
 
         try:
             telegraf_client = TelegrafClient(host="localhost", port=8092)
-            session_id = Read.retrieve_session_id()
 
             result = ljm.eReadName(handle, name)
             button_pressed = read_state.check_button_state(result)

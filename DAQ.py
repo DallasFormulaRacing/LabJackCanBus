@@ -111,7 +111,7 @@ class DAQ(object):
 
     def _run(self):
         while True:
-            button_clicked = read_state.read_button_state(self.handle)
+            button_clicked = read_state.read_button_state(self.handle, session_id=self.session_id)
             if button_clicked:
                 if self.state in [DAQState.INIT, DAQState.SAVING]:
                     # startup is done
