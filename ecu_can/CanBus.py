@@ -13,7 +13,7 @@ class ECU(object):
         self.bus = None
         self.notifier = None
         self.writer = None
-        self.session_id = -1
+        self.session_id = -1        # Duplicate?????
         self.session_id = None
         self.telegraf_client = TelegrafClient(host="localhost", port=8092)
         # shut down for safety
@@ -37,7 +37,7 @@ class ECU(object):
         self.output_file = value
 
     def start(self, session_id: int):
-        self.session_id = session_id
+        self.session_id = session_id        # Here as well
         self.session_id = session_id
         self.bus = can.interface.Bus(channel="can0", interface="socketcan")
         # Initialize CSVWriter to log messages to the global OUTPUT_FILE
