@@ -259,10 +259,8 @@ class Stream:
             else:
                 self.logger.error(err)
 
-    def start(self):
-        with open("./config.json", "r") as fp:
-            data = json.load(fp)
-        self.session_id = data.get("session_id", -1)
+    def start(self, session_id: int):
+        self.session_id = session_id
 
         # Time Sync
         self.time_offset = None

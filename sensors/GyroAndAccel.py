@@ -17,8 +17,8 @@ def butter_lowpass(cutoff, fs, order = 5):
     return butter(order, cutoff, fs = fs, btype='low', analog=False)
 
 class Accelerometer(Extension):
-    def __init__(self, session_id: float):
-        self.session_id = session_id
+    def __init__(self):
+        self.session_id = -1
         self.i2c = None
         self.accelerometer = None
         self.telegraf_client = TelegrafClient(host="localhost", port=8092)
@@ -27,6 +27,9 @@ class Accelerometer(Extension):
     def setup(self):
         self.i2c = busio.I2C(board.SCL, board.SDA)
         self.accelerometer = adafruit_lsm303_accel.LSM303_Accel(self.i2c)
+
+    def set_session_id(self, session_id: int):
+        self.session_id = session_id
 
     def poll(self) -> pd.DataFrame:
         accel_x, accel_y, accel_z = self.accelerometer.acceleration
@@ -56,8 +59,8 @@ class Accelerometer(Extension):
 
 
 class Gyro(Extension):
-    def __init__(self, session_id: float):
-        self.session_id = session_id
+    def __init__(self):
+        self.session_id = -1
         self.i2c = None
         self.gyroscope = None
         self.telegraf_client = TelegrafClient(host="localhost", port=8092)
@@ -66,6 +69,9 @@ class Gyro(Extension):
     def setup(self):
         self.i2c = busio.I2C(board.SCL, board.SDA)
         self.gyroscope = adafruit_l3gd20.L3GD20_I2C(self.i2c)
+        
+    def set_session_id(self, session_id: int):
+        self.session_id = session_id
 
     def poll(self) -> pd.DataFrame:
         ang_x, ang_y, ang_z = self.gyroscope.gyro
@@ -96,37 +102,31 @@ class Gyro(Extension):
 
 class Read(threading.Thread):
 
-    def __init__(self):
-        super().__init__(target=self.start_reading)
+    def __init__(self, session_id: int):
+        super().__init__(target=self.start_reading, args=[session_id])
         self.stop_event = threading.Event()
 
         self.accel_df = pd.DataFrame()
         self.gyro_df = pd.DataFrame()
-        self.session_id = self.retrieve_session_id()
         
         try:
-            self.gyro = Gyro(self.session_id)
+            self.gyro = Gyro()
         except Exception as e:
             logging.error(
                 f"Failed to initialize gyroscope: {e}\n{traceback.format_exc()}"
             )
             
         try:
-            self.accel = Accelerometer(self.session_id)
+            self.accel = Accelerometer()
         except Exception as e:
             logging.error(
                 f"Failed to initialize accelerometer: {e}\n{traceback.format_exc()}"
             )
 
-    def retrieve_session_id(self):
-        with open("config.json", "r") as config_file:
-            config = json.load(config_file)
-            session_id = config["session_id"]
-            logging.info(f"Retrieved session id: {session_id}")
-            return session_id
-
-    def start_reading(self):
-        self.session_id = self.retrieve_session_id()
+    def start_reading(self, session_id: int):
+        self.gyro.set_session_id(session_id)
+        self.accel.set_session_id(session_id)
+        
         logging.info("Processing data")
         while not self.stop_event.is_set():
             self.stop_event.wait(0.05)

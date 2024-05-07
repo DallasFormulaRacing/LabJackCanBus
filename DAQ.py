@@ -70,7 +70,7 @@ class DAQ(object):
         if new_state == DAQState.COLLECTING:
             self.session_id += 1
             if self.analog_stream:
-                self.analog_stream.start()
+                self.analog_stream.start(session_id=self.session_id)
 
             if self.canbus:
                 self.canbus.start(session_id=self.session_id)
@@ -100,14 +100,14 @@ class DAQ(object):
                 self.read_accel_gyro.save(self.output_path + f"/accel-{self.session_id}.csv", self.output_path
                                           + f"/gyro-{self.session_id}.csv")
                 
-                self.read_accel_gyro = Read()   # Re-initializes thread to reset session id
+                self.read_accel_gyro = Read(session_id=self.session_id)   # Re-initializes thread to reset session id
 
         elif new_state == DAQState.INIT:
             self.analog_stream = Stream(handle=self.handle, extensions=[Linpot()])
             self.canbus = ECU(output_path=self.output_path + f"/can-")
             self.handle = self.analog_stream.handle
             
-            self.read_accel_gyro = Read()
+            self.read_accel_gyro = Read(session_id=self.session_id)
 
     def _run(self):
         while True:
